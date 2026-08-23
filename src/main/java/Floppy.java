@@ -4,8 +4,8 @@ import java.util.Scanner;
  * Floppy is a command line chatbot with the personality of a 1.44 MB floppy disk:
  * it whirrs, it clicks, and it is delighted to be useful again after decades in a drawer.
  *
- * <p>At this stage (Level-1) Floppy simply echoes back whatever the user types,
- * and exits when the user types {@code bye}.
+ * <p>At this stage (Level-2) Floppy stores whatever the user types and plays the
+ * whole collection back when the user types {@code list}. It exits on {@code bye}.
  */
 public class Floppy {
 
@@ -25,8 +25,17 @@ public class Floppy {
     /** The command that makes Floppy exit. */
     private static final String EXIT_COMMAND = "bye";
 
+    /** The command that makes Floppy print everything it has stored. */
+    private static final String LIST_COMMAND = "list";
+
     /**
-     * Drive noises used to introduce each echoed command. Floppy cycles through them
+     * Largest number of items Floppy can hold. The project brief allows us to assume
+     * the user never exceeds this, so a fixed-size array is enough for now.
+     */
+    private static final int MAX_ITEMS = 100;
+
+    /**
+     * Drive noises used to introduce each stored item. Floppy cycles through them
      * so that repeated commands do not produce identical replies, which makes the
      * chatbot feel more alive than a single fixed prefix would.
      */
@@ -41,7 +50,8 @@ public class Floppy {
         printGreeting();
 
         Scanner in = new Scanner(System.in);
-        int commandCount = 0;
+        String[] items = new String[MAX_ITEMS];
+        int itemCount = 0;
 
         // hasNextLine() guards against the input stream ending without a "bye",
         // which happens when input is piped in from a file rather than typed.
@@ -52,13 +62,17 @@ public class Floppy {
                 break;
             }
 
-            if (input.isBlank()) {
+            if (input.equalsIgnoreCase(LIST_COMMAND)) {
+                printItems(items, itemCount);
+            } else if (input.isBlank()) {
                 printBlankInputResponse();
-                continue;
+            } else if (itemCount == MAX_ITEMS) {
+                printDiskFullResponse();
+            } else {
+                items[itemCount] = input;
+                printItemAdded(input, itemCount);
+                itemCount++;
             }
-
-            printEcho(input, commandCount);
-            commandCount++;
         }
 
         printFarewell();
@@ -70,31 +84,61 @@ public class Floppy {
         System.out.println(BANNER);
         System.out.println("     *click... whirr... clunk*");
         System.out.println("     Hello! I'm Floppy, 1.44 MB of pure determination.");
-        System.out.println("     Careful, I bruise easily and I fear magnets.");
+        System.out.println("     Tell me anything and I'll hold onto it. Type 'list' to hear it back.");
         System.out.println("     What can I do for you?");
         System.out.println(HORIZONTAL_LINE);
     }
 
     /**
-     * Echoes one command back to the user, prefixed with a drive noise.
+     * Confirms that an item has been stored.
      *
-     * @param input        the exact text the user entered
-     * @param commandCount how many commands have been echoed so far, used to pick the noise
+     * @param item      the exact text the user entered
+     * @param itemIndex position the item was stored at, used to pick the drive noise
      */
-    private static void printEcho(String input, int commandCount) {
-        String noise = DRIVE_NOISES[commandCount % DRIVE_NOISES.length];
+    private static void printItemAdded(String item, int itemIndex) {
+        String noise = DRIVE_NOISES[itemIndex % DRIVE_NOISES.length];
         System.out.println(HORIZONTAL_LINE);
-        System.out.println("     " + noise + " I read back: " + input);
+        System.out.println("     " + noise + " added: " + item);
         System.out.println(HORIZONTAL_LINE);
     }
 
     /**
-     * Responds to an empty line. Echoing nothing back would look like a bug,
-     * so Floppy stays in character instead.
+     * Prints everything Floppy is holding, numbered from 1.
+     *
+     * @param items     the storage array; only the first {@code itemCount} slots are filled
+     * @param itemCount how many slots are actually in use
+     */
+    private static void printItems(String[] items, int itemCount) {
+        System.out.println(HORIZONTAL_LINE);
+        if (itemCount == 0) {
+            System.out.println("     *spins, finds nothing* Not a single byte in here yet.");
+        } else {
+            System.out.println("     *rattling through the index*");
+            for (int i = 0; i < itemCount; i++) {
+                System.out.println("     " + (i + 1) + ". " + items[i]);
+            }
+        }
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Responds to an empty line. Storing a blank item would clutter the list,
+     * so Floppy stays in character and ignores it instead.
      */
     private static void printBlankInputResponse() {
         System.out.println(HORIZONTAL_LINE);
         System.out.println("     *reads an empty sector* ...that was a whole lot of nothing.");
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Responds when storage is full. The brief says to assume this never happens,
+     * but saying so beats crashing with an ArrayIndexOutOfBoundsException.
+     */
+    private static void printDiskFullResponse() {
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println("     *grinding noise* Disk full at " + MAX_ITEMS + " items.");
+        System.out.println("     I did warn you I was small.");
         System.out.println(HORIZONTAL_LINE);
     }
 
