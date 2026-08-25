@@ -16,6 +16,9 @@ public class Floppy {
     /** Indentation placed in front of every line Floppy speaks. */
     private static final String INDENT = "     ";
 
+    /** Deeper indentation used when a line shows the detail of the line above it. */
+    private static final String INDENT_DETAIL = INDENT + "  ";
+
     /** ASCII art shown once at startup. */
     private static final String BANNER =
             " _____ _                      \n"
@@ -26,16 +29,16 @@ public class Floppy {
             + "              |_|   |_|    |___/";
 
     /** The command that makes Floppy exit. */
-    private static final String EXIT_COMMAND = "bye";
+    private static final String COMMAND_EXIT = "bye";
 
     /** The command that makes Floppy print every task it is holding. */
-    private static final String LIST_COMMAND = "list";
+    private static final String COMMAND_LIST = "list";
 
     /** The command that marks a task as done. */
-    private static final String MARK_COMMAND = "mark";
+    private static final String COMMAND_MARK = "mark";
 
     /** The command that marks a task as not done. */
-    private static final String UNMARK_COMMAND = "unmark";
+    private static final String COMMAND_UNMARK = "unmark";
 
     /**
      * Largest number of tasks Floppy can hold. The project brief allows us to assume
@@ -73,17 +76,17 @@ public class Floppy {
         while (in.hasNextLine()) {
             String input = in.nextLine().strip();
 
-            if (input.equalsIgnoreCase(EXIT_COMMAND)) {
+            if (input.equalsIgnoreCase(COMMAND_EXIT)) {
                 break;
             }
 
             if (input.isEmpty()) {
                 printBlankInputResponse();
-            } else if (input.equalsIgnoreCase(LIST_COMMAND)) {
+            } else if (input.equalsIgnoreCase(COMMAND_LIST)) {
                 printTasks(tasks, taskCount);
-            } else if (isCommand(input, MARK_COMMAND)) {
+            } else if (isCommand(input, COMMAND_MARK)) {
                 changeTaskStatus(tasks, taskCount, input, true);
-            } else if (isCommand(input, UNMARK_COMMAND)) {
+            } else if (isCommand(input, COMMAND_UNMARK)) {
                 changeTaskStatus(tasks, taskCount, input, false);
             } else if (taskCount == MAX_TASKS) {
                 printDiskFullResponse();
@@ -204,7 +207,7 @@ public class Floppy {
     private static void printStatusChanged(String message, Task task) {
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + message);
-        System.out.println(INDENT + "  " + task);
+        System.out.println(INDENT_DETAIL + task);
         System.out.println(HORIZONTAL_LINE);
     }
 
