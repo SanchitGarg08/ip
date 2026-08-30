@@ -149,9 +149,8 @@ public class Floppy {
     }
 
     /**
-     * Marks a task as done or not done, then reports the outcome to the user.
-     * Reports a problem instead if the task number is missing, not a number,
-     * or outside the range of stored tasks.
+     * Marks the task the user picked as done or not done, then reports the outcome.
+     * Does nothing if the command did not identify a task.
      *
      * @param tasks         the storage array.
      * @param taskCount     how many slots are actually in use.
@@ -159,28 +158,12 @@ public class Floppy {
      * @param shouldBeDone  true to mark the task done, false to mark it not done.
      */
     private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone) {
-        String[] parts = input.split("\\s+", 2);
+        Task task = findTask(tasks, taskCount, input);
 
-        if (parts.length < 2) {
-            printProblem("Which one? Give me a number, e.g. '" + parts[0] + " 2'.");
+        if (task == null) {
             return;
         }
 
-        int taskNumber;
-        try {
-            taskNumber = Integer.parseInt(parts[1]);
-        } catch (NumberFormatException e) {
-            printProblem("'" + parts[1] + "' is not a number, and I only speak in sectors.");
-            return;
-        }
-
-        if (taskNumber < 1 || taskNumber > taskCount) {
-            printProblem("I have " + describeCount(taskCount)
-                    + ". There is nothing at number " + taskNumber + ".");
-            return;
-        }
-
-        Task task = tasks[taskNumber - 1];
         if (shouldBeDone) {
             task.markAsDone();
             printStatusChanged("*clack* Nice! I've marked this task as done:", task);
@@ -188,6 +171,41 @@ public class Floppy {
             task.markAsNotDone();
             printStatusChanged("*rewinds* OK, I've marked this task as not done yet:", task);
         }
+    }
+
+    /**
+     * Returns the task named by the number in the user's command.
+     * Reports the problem and returns null if that number is missing, not a number,
+     * or outside the range of stored tasks.
+     *
+     * @param tasks     the storage array.
+     * @param taskCount how many slots are actually in use.
+     * @param input     the whole line the user entered, already stripped.
+     * @return the task the user picked, or null if the command did not identify one.
+     */
+    private static Task findTask(Task[] tasks, int taskCount, String input) {
+        String[] parts = input.split("\\s+", 2);
+
+        if (parts.length < 2) {
+            printProblem("Which one? Give me a number, e.g. '" + parts[0] + " 2'.");
+            return null;
+        }
+
+        int taskNumber;
+        try {
+            taskNumber = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            printProblem("'" + parts[1] + "' is not a number, and I only speak in sectors.");
+            return null;
+        }
+
+        if (taskNumber < 1 || taskNumber > taskCount) {
+            printProblem("I have " + describeCount(taskCount)
+                    + ". There is nothing at number " + taskNumber + ".");
+            return null;
+        }
+
+        return tasks[taskNumber - 1];
     }
 
     /** Prints the banner and welcome message shown when Floppy starts up. */
