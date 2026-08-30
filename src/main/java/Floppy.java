@@ -99,26 +99,41 @@ public class Floppy {
                 break;
             }
 
-            if (input.isEmpty()) {
-                printBlankInputResponse();
-            } else if (input.equalsIgnoreCase(COMMAND_LIST)) {
-                printTasks(tasks, taskCount);
-            } else if (isCommand(input, COMMAND_MARK)) {
-                changeTaskStatus(tasks, taskCount, input, true);
-            } else if (isCommand(input, COMMAND_UNMARK)) {
-                changeTaskStatus(tasks, taskCount, input, false);
-            } else if (isCommand(input, COMMAND_TODO)) {
-                taskCount = addTask(tasks, taskCount, createTodo(input));
-            } else if (isCommand(input, COMMAND_DEADLINE)) {
-                taskCount = addTask(tasks, taskCount, createDeadline(input));
-            } else if (isCommand(input, COMMAND_EVENT)) {
-                taskCount = addTask(tasks, taskCount, createEvent(input));
-            } else {
-                printUnknownCommandResponse(input);
-            }
+            taskCount = handleCommand(tasks, taskCount, input);
         }
 
         printFarewell();
+    }
+
+    /**
+     * Carries out one command from the user and returns the resulting task count.
+     * Reports the problem to the user if the command word is not recognised.
+     *
+     * @param tasks     the storage array.
+     * @param taskCount how many slots are in use before the command runs.
+     * @param input     the whole line the user entered, already stripped.
+     * @return how many slots are in use after the command has run.
+     */
+    private static int handleCommand(Task[] tasks, int taskCount, String input) {
+        if (input.isEmpty()) {
+            printBlankInputResponse();
+        } else if (input.equalsIgnoreCase(COMMAND_LIST)) {
+            printTasks(tasks, taskCount);
+        } else if (isCommand(input, COMMAND_MARK)) {
+            changeTaskStatus(tasks, taskCount, input, true);
+        } else if (isCommand(input, COMMAND_UNMARK)) {
+            changeTaskStatus(tasks, taskCount, input, false);
+        } else if (isCommand(input, COMMAND_TODO)) {
+            return addTask(tasks, taskCount, createTodo(input));
+        } else if (isCommand(input, COMMAND_DEADLINE)) {
+            return addTask(tasks, taskCount, createDeadline(input));
+        } else if (isCommand(input, COMMAND_EVENT)) {
+            return addTask(tasks, taskCount, createEvent(input));
+        } else {
+            printUnknownCommandResponse(input);
+        }
+
+        return taskCount;
     }
 
     /**
