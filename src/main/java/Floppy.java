@@ -50,6 +50,9 @@ public class Floppy {
     /** The command that adds a task spanning a start and an end time. */
     private static final String COMMAND_EVENT = "event";
 
+    /** Regular expression matching the whitespace that separates words in a command. */
+    private static final String WHITESPACE_REGEX = "\\s+";
+
     /** Separates a deadline's description from its due time. */
     private static final String MARKER_BY = "/by";
 
@@ -144,8 +147,29 @@ public class Floppy {
      * @return true if the first word of the input is that command word.
      */
     private static boolean isCommand(String input, String commandWord) {
-        String firstWord = input.split("\\s+")[0];
-        return firstWord.equalsIgnoreCase(commandWord);
+        return commandWordOf(input).equalsIgnoreCase(commandWord);
+    }
+
+    /**
+     * Returns the first word of the user's input, which names the command.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the command word, or an empty string if the input was empty.
+     */
+    private static String commandWordOf(String input) {
+        return input.split(WHITESPACE_REGEX, 2)[0];
+    }
+
+    /**
+     * Splits text at the first occurrence of a marker such as {@value #MARKER_BY},
+     * discarding any whitespace around it.
+     *
+     * @param text   the text to split.
+     * @param marker the marker to split at.
+     * @return the text before the marker, followed by the text after it if present.
+     */
+    private static String[] splitAtMarker(String text, String marker) {
+        return text.split("\\s*" + marker + "\\s*", 2);
     }
 
     /**
@@ -184,18 +208,18 @@ public class Floppy {
      * @return the task the user picked, or null if the command did not identify one.
      */
     private static Task findTask(Task[] tasks, int taskCount, String input) {
-        String[] parts = input.split("\\s+", 2);
+        String argument = argumentOf(input);
 
-        if (parts.length < 2) {
-            printProblem("Which one? Give me a number, e.g. '" + parts[0] + " 2'.");
+        if (argument.isEmpty()) {
+            printProblem("Which one? Give me a number, e.g. '" + commandWordOf(input) + " 2'.");
             return null;
         }
 
         int taskNumber;
         try {
-            taskNumber = Integer.parseInt(parts[1]);
+            taskNumber = Integer.parseInt(argument);
         } catch (NumberFormatException e) {
-            printProblem("'" + parts[1] + "' is not a number, and I only speak in sectors.");
+            printProblem("'" + argument + "' is not a number, and I only speak in sectors.");
             return null;
         }
 
@@ -281,7 +305,7 @@ public class Floppy {
      * @return the argument text, or an empty string if the command had no argument.
      */
     private static String argumentOf(String input) {
-        String[] parts = input.split("\\s+", 2);
+        String[] parts = input.split(WHITESPACE_REGEX, 2);
         return parts.length < 2 ? "" : parts[1].strip();
     }
 
@@ -308,7 +332,7 @@ public class Floppy {
      * @return the new deadline, or null if the description or the due time was missing.
      */
     private static Deadline createDeadline(String input) {
-        String[] parts = argumentOf(input).split("\\s*" + MARKER_BY + "\\s*", 2);
+        String[] parts = splitAtMarker(argumentOf(input), MARKER_BY);
         String description = parts[0].strip();
         String by = parts.length < 2 ? "" : parts[1].strip();
 
@@ -328,13 +352,13 @@ public class Floppy {
      * @return the new event, or null if the description, start or end was missing.
      */
     private static Event createEvent(String input) {
-        String[] fromParts = argumentOf(input).split("\\s*" + MARKER_FROM + "\\s*", 2);
+        String[] fromParts = splitAtMarker(argumentOf(input), MARKER_FROM);
         String description = fromParts[0].strip();
         String from = "";
         String to = "";
 
         if (fromParts.length == 2) {
-            String[] toParts = fromParts[1].split("\\s*" + MARKER_TO + "\\s*", 2);
+            String[] toParts = splitAtMarker(fromParts[1], MARKER_TO);
             from = toParts[0].strip();
             to = toParts.length < 2 ? "" : toParts[1].strip();
         }
@@ -353,7 +377,7 @@ public class Floppy {
      * @param input the whole line the user entered, already stripped.
      */
     private static void printUnknownCommandResponse(String input) {
-        String commandWord = input.split("\\s+")[0];
+        String commandWord = commandWordOf(input);
         printProblem("'" + commandWord + "'? That's not in my directory. I know "
                 + "todo, deadline, event, list, mark, unmark and bye.");
     }
@@ -365,16 +389,24 @@ public class Floppy {
      * @param taskCount how many slots are actually in use.
      */
     private static void printTasks(Task[] tasks, int taskCount) {
-        System.out.println(HORIZONTAL_LINE);
         if (taskCount == 0) {
-            System.out.println(INDENT + "*spins, finds nothing* Not a single byte in here yet.");
-        } else {
-            System.out.println(INDENT + "*rattling through the index*");
-            System.out.println(INDENT + "Here are the tasks in your list:");
-            for (int i = 0; i < taskCount; i++) {
-                System.out.println(INDENT + (i + 1) + "." + tasks[i]);
-            }
+            printEmptyListResponse();
+            return;
         }
+
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println(INDENT + "*rattling through the index*");
+        System.out.println(INDENT + "Here are the tasks in your list:");
+        for (int i = 0; i < taskCount; i++) {
+            System.out.println(INDENT + (i + 1) + "." + tasks[i]);
+        }
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /** Prints Floppy's reply when there are no tasks to show. */
+    private static void printEmptyListResponse() {
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println(INDENT + "*spins, finds nothing* Not a single byte in here yet.");
         System.out.println(HORIZONTAL_LINE);
     }
 
