@@ -4,8 +4,9 @@ import java.util.Scanner;
  * Floppy is a command line chatbot with the personality of a 1.44 MB floppy disk:
  * it whirrs, it clicks, and it is delighted to be useful again after decades in a drawer.
  *
- * <p>At this stage (Level-3) Floppy remembers the tasks the user types, lists them on
- * demand, and tracks which ones are done. It exits on {@code bye}.
+ * <p>At this stage (Level-4) Floppy tracks three kinds of task -- todos, deadlines
+ * and events -- lists them on demand, and records which ones are done.
+ * It exits on {@code bye}.
  */
 public class Floppy {
 
@@ -39,6 +40,24 @@ public class Floppy {
 
     /** The command that marks a task as not done. */
     private static final String COMMAND_UNMARK = "unmark";
+
+    /** The command that adds a task with no date or time. */
+    private static final String COMMAND_TODO = "todo";
+
+    /** The command that adds a task due by a given time. */
+    private static final String COMMAND_DEADLINE = "deadline";
+
+    /** The command that adds a task spanning a start and an end time. */
+    private static final String COMMAND_EVENT = "event";
+
+    /** Separates a deadline's description from its due time. */
+    private static final String MARKER_BY = "/by";
+
+    /** Separates an event's description from its start time. */
+    private static final String MARKER_FROM = "/from";
+
+    /** Separates an event's start time from its end time. */
+    private static final String MARKER_TO = "/to";
 
     /**
      * Largest number of tasks Floppy can hold. The project brief allows us to assume
@@ -88,12 +107,14 @@ public class Floppy {
                 changeTaskStatus(tasks, taskCount, input, true);
             } else if (isCommand(input, COMMAND_UNMARK)) {
                 changeTaskStatus(tasks, taskCount, input, false);
-            } else if (taskCount == MAX_TASKS) {
-                printDiskFullResponse();
+            } else if (isCommand(input, COMMAND_TODO)) {
+                taskCount = addTask(tasks, taskCount, createTodo(input));
+            } else if (isCommand(input, COMMAND_DEADLINE)) {
+                taskCount = addTask(tasks, taskCount, createDeadline(input));
+            } else if (isCommand(input, COMMAND_EVENT)) {
+                taskCount = addTask(tasks, taskCount, createEvent(input));
             } else {
-                tasks[taskCount] = new Task(input);
-                printTaskAdded(tasks[taskCount], taskCount);
-                taskCount++;
+                printUnknownCommandResponse(input);
             }
         }
 
@@ -139,7 +160,8 @@ public class Floppy {
         }
 
         if (taskNumber < 1 || taskNumber > taskCount) {
-            printProblem("I have " + taskCount + " task(s). There is nothing at number " + taskNumber + ".");
+            printProblem("I have " + describeCount(taskCount)
+                    + ". There is nothing at number " + taskNumber + ".");
             return;
         }
 
@@ -159,23 +181,148 @@ public class Floppy {
         System.out.println(BANNER);
         System.out.println(INDENT + "*click... whirr... clunk*");
         System.out.println(INDENT + "Hello! I'm Floppy, 1.44 MB of pure determination.");
-        System.out.println(INDENT + "Tell me a task and I'll hold onto it.");
-        System.out.println(INDENT + "Try 'list', 'mark 1', 'unmark 1', or 'bye'.");
+        System.out.println(INDENT + "Tell me a task and I'll hold onto it:");
+        System.out.println(INDENT_DETAIL + "todo borrow book");
+        System.out.println(INDENT_DETAIL + "deadline return book /by Sunday");
+        System.out.println(INDENT_DETAIL + "event project meeting /from Mon 2pm /to 4pm");
+        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', or 'bye'.");
         System.out.println(INDENT + "What can I do for you?");
         System.out.println(HORIZONTAL_LINE);
     }
 
     /**
-     * Confirms that a task has been stored.
+     * Confirms that a task has been stored, and says how many tasks are now held.
      *
      * @param task      the task that was just stored.
      * @param taskIndex position the task was stored at, used to pick the drive noise.
+     * @param taskCount how many tasks Floppy holds after this one was added.
      */
-    private static void printTaskAdded(Task task, int taskIndex) {
+    private static void printTaskAdded(Task task, int taskIndex, int taskCount) {
         String noise = DRIVE_NOISES[taskIndex % DRIVE_NOISES.length];
         System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + noise + " added: " + task);
+        System.out.println(INDENT + noise + " Got it. I've added this task:");
+        System.out.println(INDENT_DETAIL + task);
+        System.out.println(INDENT + "Now you have " + describeCount(taskCount) + " in the list.");
         System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Returns a task count with the right singular or plural noun,
+     * for example "1 task" or "5 tasks".
+     *
+     * @param taskCount the number of tasks to describe.
+     * @return the count followed by the correctly pluralised word "task".
+     */
+    private static String describeCount(int taskCount) {
+        String noun = taskCount == 1 ? " task" : " tasks";
+        return taskCount + noun;
+    }
+
+    /**
+     * Stores a task, reports it to the user, and returns the updated task count.
+     * Does nothing if the task could not be built or if storage is full.
+     *
+     * @param tasks     the storage array.
+     * @param taskCount how many slots are in use before this call.
+     * @param task      the task to store, or null if the command was malformed.
+     * @return how many slots are in use after this call.
+     */
+    private static int addTask(Task[] tasks, int taskCount, Task task) {
+        if (task == null) {
+            return taskCount;
+        }
+        if (taskCount == MAX_TASKS) {
+            printDiskFullResponse();
+            return taskCount;
+        }
+
+        tasks[taskCount] = task;
+        printTaskAdded(task, taskCount, taskCount + 1);
+        return taskCount + 1;
+    }
+
+    /**
+     * Returns everything the user typed after the command word.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the argument text, or an empty string if the command had no argument.
+     */
+    private static String argumentOf(String input) {
+        String[] parts = input.split("\\s+", 2);
+        return parts.length < 2 ? "" : parts[1].strip();
+    }
+
+    /**
+     * Builds a todo from the user's input.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the new todo, or null if the description was missing.
+     */
+    private static Todo createTodo(String input) {
+        String description = argumentOf(input);
+
+        if (description.isEmpty()) {
+            printProblem("A todo needs a description, e.g. 'todo borrow book'.");
+            return null;
+        }
+        return new Todo(description);
+    }
+
+    /**
+     * Builds a deadline from the user's input, splitting it at the {@value #MARKER_BY} marker.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the new deadline, or null if the description or the due time was missing.
+     */
+    private static Deadline createDeadline(String input) {
+        String[] parts = argumentOf(input).split("\\s*" + MARKER_BY + "\\s*", 2);
+        String description = parts[0].strip();
+        String by = parts.length < 2 ? "" : parts[1].strip();
+
+        if (description.isEmpty() || by.isEmpty()) {
+            printProblem("A deadline needs a description and a time, e.g. "
+                    + "'deadline return book " + MARKER_BY + " Sunday'.");
+            return null;
+        }
+        return new Deadline(description, by);
+    }
+
+    /**
+     * Builds an event from the user's input, splitting it at the {@value #MARKER_FROM}
+     * and {@value #MARKER_TO} markers.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the new event, or null if the description, start or end was missing.
+     */
+    private static Event createEvent(String input) {
+        String[] fromParts = argumentOf(input).split("\\s*" + MARKER_FROM + "\\s*", 2);
+        String description = fromParts[0].strip();
+        String from = "";
+        String to = "";
+
+        if (fromParts.length == 2) {
+            String[] toParts = fromParts[1].split("\\s*" + MARKER_TO + "\\s*", 2);
+            from = toParts[0].strip();
+            to = toParts.length < 2 ? "" : toParts[1].strip();
+        }
+
+        if (description.isEmpty() || from.isEmpty() || to.isEmpty()) {
+            printProblem("An event needs a description, a start and an end, e.g. "
+                    + "'event project meeting " + MARKER_FROM + " Mon 2pm " + MARKER_TO + " 4pm'.");
+            return null;
+        }
+        return new Event(description, from, to);
+    }
+
+    /**
+     * Reports that Floppy did not recognise the command word the user typed.
+     *
+     * @param input the whole line the user entered, already stripped.
+     */
+    private static void printUnknownCommandResponse(String input) {
+        String commandWord = input.split("\\s+")[0];
+        printProblem("'" + commandWord + "'? That's not in my directory. I know "
+                + "todo, deadline, event, list, mark, unmark and bye.");
     }
 
     /**
