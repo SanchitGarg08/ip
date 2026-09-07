@@ -47,10 +47,8 @@ standard was adopted. The points that come up most often in this project:
   ("Returns...", "Prints..."), with `@param` for all parameters or none, each ending in
   a full stop.
 * Prefer a named constant over a repeated or unexplained literal.
-
-**Known deviation:** classes currently live in the default package, which the standard
-disallows. This is deliberate — the course introduces packages in the later `A-Packages`
-increment, and moving early would pre-empt it. Resolve this when `A-Packages` is done.
+* Every class belongs to a package. `floppy` is the root package, with the task
+  hierarchy in `floppy.task`. `src/main/java` stays the source root.
 
 ## Git
 
