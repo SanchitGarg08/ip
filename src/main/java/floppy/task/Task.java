@@ -1,3 +1,5 @@
+package floppy.task;
+
 /**
  * Represents a single item that Floppy is keeping track of, together with
  * whether the user has finished it.

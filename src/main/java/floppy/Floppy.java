@@ -1,4 +1,11 @@
+package floppy;
+
 import java.util.Scanner;
+
+import floppy.task.Deadline;
+import floppy.task.Event;
+import floppy.task.Task;
+import floppy.task.Todo;
 
 /**
  * Floppy is a command line chatbot with the personality of a 1.44 MB floppy disk:

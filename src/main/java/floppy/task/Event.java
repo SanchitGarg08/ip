@@ -1,3 +1,5 @@
+package floppy.task;
+
 /**
  * Represents a task that runs from one point in time to another,
  * for example "project meeting (from: Mon 2pm to: 4pm)".

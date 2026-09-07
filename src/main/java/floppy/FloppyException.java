@@ -1,3 +1,5 @@
+package floppy;
+
 /**
  * Signals a problem Floppy can explain to the user, such as a command that is
  * missing part of its input or names a task that does not exist.
