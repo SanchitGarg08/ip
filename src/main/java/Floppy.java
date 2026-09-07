@@ -192,13 +192,11 @@ public class Floppy {
      * @param taskCount     how many slots are actually in use.
      * @param input         the whole line the user entered, already stripped.
      * @param shouldBeDone  true to mark the task done, false to mark it not done.
+     * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone) {
+    private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone)
+            throws FloppyException {
         Task task = findTask(tasks, taskCount, input);
-
-        if (task == null) {
-            return;
-        }
 
         if (shouldBeDone) {
             task.markAsDone();
@@ -211,39 +209,36 @@ public class Floppy {
 
     /**
      * Returns the task named by the number in the user's command.
-     * Reports the problem and returns null if that number is missing, not a number,
-     * or outside the range of stored tasks.
      *
      * @param tasks     the storage array.
      * @param taskCount how many slots are actually in use.
      * @param input     the whole line the user entered, already stripped.
-     * @return the task the user picked, or null if the command did not identify one.
+     * @return the task the user picked.
+     * @throws FloppyException if the number is missing, not a number, or names no stored task.
      */
-    private static Task findTask(Task[] tasks, int taskCount, String input) {
+    private static Task findTask(Task[] tasks, int taskCount, String input) throws FloppyException {
         String argument = argumentOf(input);
 
         if (argument.isEmpty()) {
-            printProblem("Which one? Give me a number, e.g. '" + commandWordOf(input) + " 2'.");
-            return null;
+            throw new FloppyException("Which one? Give me a number, e.g. '"
+                    + commandWordOf(input) + " 2'.");
         }
 
         if (!argument.matches(WHOLE_NUMBER_REGEX)) {
-            printProblem("'" + argument + "' is not a number, and I only speak in sectors.");
-            return null;
+            throw new FloppyException("'" + argument
+                    + "' is not a number, and I only speak in sectors.");
         }
 
         if (taskCount == 0) {
-            printProblem("There's nothing on me to " + commandWordOf(input).toLowerCase()
+            throw new FloppyException("There's nothing on me to " + commandWordOf(input).toLowerCase()
                     + " yet. Add a task first, e.g. 'todo borrow book'.");
-            return null;
         }
 
         int taskNumber = parseTaskNumber(argument);
 
         if (taskNumber < 1 || taskNumber > taskCount) {
-            printProblem("I have " + describeCount(taskCount)
+            throw new FloppyException("I have " + describeCount(taskCount)
                     + ". There is nothing at number " + argument + ".");
-            return null;
         }
 
         return tasks[taskNumber - 1];
