@@ -1,3 +1,5 @@
+package floppy.task;
+
 /**
  * Represents a task that must be finished before a given point in time,
  * for example "return book (by: Sunday)".
