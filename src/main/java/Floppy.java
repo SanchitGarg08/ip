@@ -108,7 +108,11 @@ public class Floppy {
                 break;
             }
 
-            taskCount = handleCommand(tasks, taskCount, input);
+            try {
+                taskCount = handleCommand(tasks, taskCount, input);
+            } catch (FloppyException e) {
+                printProblem(e.getMessage());
+            }
         }
 
         printFarewell();
@@ -122,8 +126,10 @@ public class Floppy {
      * @param taskCount how many slots are in use before the command runs.
      * @param input     the whole line the user entered, already stripped.
      * @return how many slots are in use after the command has run.
+     * @throws FloppyException if the command cannot be carried out as typed.
      */
-    private static int handleCommand(Task[] tasks, int taskCount, String input) {
+    private static int handleCommand(Task[] tasks, int taskCount, String input)
+            throws FloppyException {
         if (input.isEmpty()) {
             printBlankInputResponse();
         } else if (isCommand(input, COMMAND_LIST)) {
@@ -139,7 +145,8 @@ public class Floppy {
         } else if (isCommand(input, COMMAND_EVENT)) {
             return addTask(tasks, taskCount, createEvent(input));
         } else {
-            printUnknownCommandResponse(input);
+            throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
+                    + "I know todo, deadline, event, list, mark, unmark and bye.");
         }
 
         return taskCount;
@@ -186,13 +193,11 @@ public class Floppy {
      * @param taskCount     how many slots are actually in use.
      * @param input         the whole line the user entered, already stripped.
      * @param shouldBeDone  true to mark the task done, false to mark it not done.
+     * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone) {
+    private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone)
+            throws FloppyException {
         Task task = findTask(tasks, taskCount, input);
-
-        if (task == null) {
-            return;
-        }
 
         if (shouldBeDone) {
             task.markAsDone();
@@ -205,39 +210,36 @@ public class Floppy {
 
     /**
      * Returns the task named by the number in the user's command.
-     * Reports the problem and returns null if that number is missing, not a number,
-     * or outside the range of stored tasks.
      *
      * @param tasks     the storage array.
      * @param taskCount how many slots are actually in use.
      * @param input     the whole line the user entered, already stripped.
-     * @return the task the user picked, or null if the command did not identify one.
+     * @return the task the user picked.
+     * @throws FloppyException if the number is missing, not a number, or names no stored task.
      */
-    private static Task findTask(Task[] tasks, int taskCount, String input) {
+    private static Task findTask(Task[] tasks, int taskCount, String input) throws FloppyException {
         String argument = argumentOf(input);
 
         if (argument.isEmpty()) {
-            printProblem("Which one? Give me a number, e.g. '" + commandWordOf(input) + " 2'.");
-            return null;
+            throw new FloppyException("Which one? Give me a number, e.g. '"
+                    + commandWordOf(input) + " 2'.");
         }
 
         if (!argument.matches(WHOLE_NUMBER_REGEX)) {
-            printProblem("'" + argument + "' is not a number, and I only speak in sectors.");
-            return null;
+            throw new FloppyException("'" + argument
+                    + "' is not a number, and I only speak in sectors.");
         }
 
         if (taskCount == 0) {
-            printProblem("There's nothing on me to " + commandWordOf(input).toLowerCase()
+            throw new FloppyException("There's nothing on me to " + commandWordOf(input).toLowerCase()
                     + " yet. Add a task first, e.g. 'todo borrow book'.");
-            return null;
         }
 
         int taskNumber = parseTaskNumber(argument);
 
         if (taskNumber < 1 || taskNumber > taskCount) {
-            printProblem("I have " + describeCount(taskCount)
+            throw new FloppyException("I have " + describeCount(taskCount)
                     + ". There is nothing at number " + argument + ".");
-            return null;
         }
 
         return tasks[taskNumber - 1];
@@ -303,20 +305,17 @@ public class Floppy {
 
     /**
      * Stores a task, reports it to the user, and returns the updated task count.
-     * Does nothing if the task could not be built or if storage is full.
      *
      * @param tasks     the storage array.
      * @param taskCount how many slots are in use before this call.
-     * @param task      the task to store, or null if the command was malformed.
+     * @param task      the task to store.
      * @return how many slots are in use after this call.
+     * @throws FloppyException if Floppy is already holding as many tasks as it can.
      */
-    private static int addTask(Task[] tasks, int taskCount, Task task) {
-        if (task == null) {
-            return taskCount;
-        }
+    private static int addTask(Task[] tasks, int taskCount, Task task) throws FloppyException {
         if (taskCount == MAX_TASKS) {
-            printDiskFullResponse();
-            return taskCount;
+            throw new FloppyException("Disk full at " + MAX_TASKS + " tasks. "
+                    + "I did warn you I was small.");
         }
 
         tasks[taskCount] = task;
@@ -339,14 +338,14 @@ public class Floppy {
      * Builds a todo from the user's input.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new todo, or null if the description was missing.
+     * @return the new todo.
+     * @throws FloppyException if the description was missing.
      */
-    private static Todo createTodo(String input) {
+    private static Todo createTodo(String input) throws FloppyException {
         String description = argumentOf(input);
 
         if (description.isEmpty()) {
-            printProblem("A todo needs a description, e.g. 'todo borrow book'.");
-            return null;
+            throw new FloppyException("A todo needs a description, e.g. 'todo borrow book'.");
         }
         return new Todo(description);
     }
@@ -355,17 +354,17 @@ public class Floppy {
      * Builds a deadline from the user's input, splitting it at the {@value #MARKER_BY} marker.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new deadline, or null if the description or the due time was missing.
+     * @return the new deadline.
+     * @throws FloppyException if the description or the due time was missing.
      */
-    private static Deadline createDeadline(String input) {
+    private static Deadline createDeadline(String input) throws FloppyException {
         String[] parts = splitAtMarker(argumentOf(input), MARKER_BY);
         String description = parts[0].strip();
         String by = parts.length < 2 ? "" : parts[1].strip();
 
         if (description.isEmpty() || by.isEmpty()) {
-            printProblem("A deadline needs a description and a time, e.g. "
+            throw new FloppyException("A deadline needs a description and a time, e.g. "
                     + "'deadline return book " + MARKER_BY + " Sunday'.");
-            return null;
         }
         return new Deadline(description, by);
     }
@@ -375,9 +374,10 @@ public class Floppy {
      * and {@value #MARKER_TO} markers.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new event, or null if the description, start or end was missing.
+     * @return the new event.
+     * @throws FloppyException if the description, start or end was missing.
      */
-    private static Event createEvent(String input) {
+    private static Event createEvent(String input) throws FloppyException {
         String[] fromParts = splitAtMarker(argumentOf(input), MARKER_FROM);
         String description = fromParts[0].strip();
         String from = "";
@@ -390,22 +390,10 @@ public class Floppy {
         }
 
         if (description.isEmpty() || from.isEmpty() || to.isEmpty()) {
-            printProblem("An event needs a description, a start and an end, e.g. "
+            throw new FloppyException("An event needs a description, a start and an end, e.g. "
                     + "'event project meeting " + MARKER_FROM + " Mon 2pm " + MARKER_TO + " 4pm'.");
-            return null;
         }
         return new Event(description, from, to);
-    }
-
-    /**
-     * Reports that Floppy did not recognise the command word the user typed.
-     *
-     * @param input the whole line the user entered, already stripped.
-     */
-    private static void printUnknownCommandResponse(String input) {
-        String commandWord = commandWordOf(input);
-        printProblem("'" + commandWord + "'? That's not in my directory. I know "
-                + "todo, deadline, event, list, mark, unmark and bye.");
     }
 
     /**
@@ -415,14 +403,15 @@ public class Floppy {
      * @param tasks     the storage array; only the first {@code taskCount} slots are filled.
      * @param taskCount how many slots are actually in use.
      * @param input     the whole line the user entered, already stripped.
+     * @throws FloppyException if the list command was given something after it.
      */
-    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input) {
+    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input)
+            throws FloppyException {
         String argument = argumentOf(input);
 
         if (!argument.isEmpty()) {
-            printProblem("'" + COMMAND_LIST + "' takes nothing after it. "
+            throw new FloppyException("'" + COMMAND_LIST + "' takes nothing after it. "
                     + "Drop the '" + argument + "' and I'll read the whole disk.");
-            return;
         }
 
         printTasks(tasks, taskCount);
@@ -487,17 +476,6 @@ public class Floppy {
     private static void printBlankInputResponse() {
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + "*reads an empty sector* ...that was a whole lot of nothing.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Responds when storage is full. The brief says to assume this never happens,
-     * but saying so beats crashing with an ArrayIndexOutOfBoundsException.
-     */
-    private static void printDiskFullResponse() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*grinding noise* Disk full at " + MAX_TASKS + " tasks.");
-        System.out.println(INDENT + "I did warn you I was small.");
         System.out.println(HORIZONTAL_LINE);
     }
 
