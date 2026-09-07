@@ -108,7 +108,11 @@ public class Floppy {
                 break;
             }
 
-            taskCount = handleCommand(tasks, taskCount, input);
+            try {
+                taskCount = handleCommand(tasks, taskCount, input);
+            } catch (FloppyException e) {
+                printProblem(e.getMessage());
+            }
         }
 
         printFarewell();
@@ -122,8 +126,10 @@ public class Floppy {
      * @param taskCount how many slots are in use before the command runs.
      * @param input     the whole line the user entered, already stripped.
      * @return how many slots are in use after the command has run.
+     * @throws FloppyException if the command cannot be carried out as typed.
      */
-    private static int handleCommand(Task[] tasks, int taskCount, String input) {
+    private static int handleCommand(Task[] tasks, int taskCount, String input)
+            throws FloppyException {
         if (input.isEmpty()) {
             printBlankInputResponse();
         } else if (isCommand(input, COMMAND_LIST)) {
@@ -339,14 +345,14 @@ public class Floppy {
      * Builds a todo from the user's input.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new todo, or null if the description was missing.
+     * @return the new todo.
+     * @throws FloppyException if the description was missing.
      */
-    private static Todo createTodo(String input) {
+    private static Todo createTodo(String input) throws FloppyException {
         String description = argumentOf(input);
 
         if (description.isEmpty()) {
-            printProblem("A todo needs a description, e.g. 'todo borrow book'.");
-            return null;
+            throw new FloppyException("A todo needs a description, e.g. 'todo borrow book'.");
         }
         return new Todo(description);
     }
@@ -355,17 +361,17 @@ public class Floppy {
      * Builds a deadline from the user's input, splitting it at the {@value #MARKER_BY} marker.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new deadline, or null if the description or the due time was missing.
+     * @return the new deadline.
+     * @throws FloppyException if the description or the due time was missing.
      */
-    private static Deadline createDeadline(String input) {
+    private static Deadline createDeadline(String input) throws FloppyException {
         String[] parts = splitAtMarker(argumentOf(input), MARKER_BY);
         String description = parts[0].strip();
         String by = parts.length < 2 ? "" : parts[1].strip();
 
         if (description.isEmpty() || by.isEmpty()) {
-            printProblem("A deadline needs a description and a time, e.g. "
+            throw new FloppyException("A deadline needs a description and a time, e.g. "
                     + "'deadline return book " + MARKER_BY + " Sunday'.");
-            return null;
         }
         return new Deadline(description, by);
     }
@@ -375,9 +381,10 @@ public class Floppy {
      * and {@value #MARKER_TO} markers.
      *
      * @param input the whole line the user entered, already stripped.
-     * @return the new event, or null if the description, start or end was missing.
+     * @return the new event.
+     * @throws FloppyException if the description, start or end was missing.
      */
-    private static Event createEvent(String input) {
+    private static Event createEvent(String input) throws FloppyException {
         String[] fromParts = splitAtMarker(argumentOf(input), MARKER_FROM);
         String description = fromParts[0].strip();
         String from = "";
@@ -390,9 +397,8 @@ public class Floppy {
         }
 
         if (description.isEmpty() || from.isEmpty() || to.isEmpty()) {
-            printProblem("An event needs a description, a start and an end, e.g. "
+            throw new FloppyException("An event needs a description, a start and an end, e.g. "
                     + "'event project meeting " + MARKER_FROM + " Mon 2pm " + MARKER_TO + " 4pm'.");
-            return null;
         }
         return new Event(description, from, to);
     }
