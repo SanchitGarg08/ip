@@ -50,6 +50,12 @@ public class Floppy {
     /** The command that adds a task spanning a start and an end time. */
     private static final String COMMAND_EVENT = "event";
 
+    /** Regular expression matching a whole number, with an optional leading sign. */
+    private static final String WHOLE_NUMBER_REGEX = "[+-]?\\d+";
+
+    /** Stands in for a task number too large to hold in an int; never names a real task. */
+    private static final int TASK_NUMBER_TOO_LARGE = -1;
+
     /** Regular expression matching the whitespace that separates words in a command. */
     private static final String WHITESPACE_REGEX = "\\s+";
 
@@ -120,8 +126,8 @@ public class Floppy {
     private static int handleCommand(Task[] tasks, int taskCount, String input) {
         if (input.isEmpty()) {
             printBlankInputResponse();
-        } else if (input.equalsIgnoreCase(COMMAND_LIST)) {
-            printTasks(tasks, taskCount);
+        } else if (isCommand(input, COMMAND_LIST)) {
+            printTasksIfNoArgument(tasks, taskCount, input);
         } else if (isCommand(input, COMMAND_MARK)) {
             changeTaskStatus(tasks, taskCount, input, true);
         } else if (isCommand(input, COMMAND_UNMARK)) {
@@ -215,21 +221,41 @@ public class Floppy {
             return null;
         }
 
-        int taskNumber;
-        try {
-            taskNumber = Integer.parseInt(argument);
-        } catch (NumberFormatException e) {
+        if (!argument.matches(WHOLE_NUMBER_REGEX)) {
             printProblem("'" + argument + "' is not a number, and I only speak in sectors.");
             return null;
         }
 
+        if (taskCount == 0) {
+            printProblem("There's nothing on me to " + commandWordOf(input).toLowerCase()
+                    + " yet. Add a task first, e.g. 'todo borrow book'.");
+            return null;
+        }
+
+        int taskNumber = parseTaskNumber(argument);
+
         if (taskNumber < 1 || taskNumber > taskCount) {
             printProblem("I have " + describeCount(taskCount)
-                    + ". There is nothing at number " + taskNumber + ".");
+                    + ". There is nothing at number " + argument + ".");
             return null;
         }
 
         return tasks[taskNumber - 1];
+    }
+
+    /**
+     * Returns the task number written in the given text.
+     *
+     * @param text a whole number, already checked against {@value #WHOLE_NUMBER_REGEX}.
+     * @return the number, or {@value #TASK_NUMBER_TOO_LARGE} if it will not fit in an int.
+     */
+    private static int parseTaskNumber(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            // Too many digits for an int, so no stored task can carry this number.
+            return TASK_NUMBER_TOO_LARGE;
+        }
     }
 
     /** Prints the banner and welcome message shown when Floppy starts up. */
@@ -380,6 +406,26 @@ public class Floppy {
         String commandWord = commandWordOf(input);
         printProblem("'" + commandWord + "'? That's not in my directory. I know "
                 + "todo, deadline, event, list, mark, unmark and bye.");
+    }
+
+    /**
+     * Prints every task Floppy is holding, or reports a problem if the list command
+     * was given something after it.
+     *
+     * @param tasks     the storage array; only the first {@code taskCount} slots are filled.
+     * @param taskCount how many slots are actually in use.
+     * @param input     the whole line the user entered, already stripped.
+     */
+    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input) {
+        String argument = argumentOf(input);
+
+        if (!argument.isEmpty()) {
+            printProblem("'" + COMMAND_LIST + "' takes nothing after it. "
+                    + "Drop the '" + argument + "' and I'll read the whole disk.");
+            return;
+        }
+
+        printTasks(tasks, taskCount);
     }
 
     /**
