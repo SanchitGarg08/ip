@@ -145,7 +145,8 @@ public class Floppy {
         } else if (isCommand(input, COMMAND_EVENT)) {
             return addTask(tasks, taskCount, createEvent(input));
         } else {
-            printUnknownCommandResponse(input);
+            throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
+                    + "I know todo, deadline, event, list, mark, unmark and bye.");
         }
 
         return taskCount;
@@ -304,20 +305,17 @@ public class Floppy {
 
     /**
      * Stores a task, reports it to the user, and returns the updated task count.
-     * Does nothing if the task could not be built or if storage is full.
      *
      * @param tasks     the storage array.
      * @param taskCount how many slots are in use before this call.
-     * @param task      the task to store, or null if the command was malformed.
+     * @param task      the task to store.
      * @return how many slots are in use after this call.
+     * @throws FloppyException if Floppy is already holding as many tasks as it can.
      */
-    private static int addTask(Task[] tasks, int taskCount, Task task) {
-        if (task == null) {
-            return taskCount;
-        }
+    private static int addTask(Task[] tasks, int taskCount, Task task) throws FloppyException {
         if (taskCount == MAX_TASKS) {
-            printDiskFullResponse();
-            return taskCount;
+            throw new FloppyException("Disk full at " + MAX_TASKS + " tasks. "
+                    + "I did warn you I was small.");
         }
 
         tasks[taskCount] = task;
@@ -399,31 +397,21 @@ public class Floppy {
     }
 
     /**
-     * Reports that Floppy did not recognise the command word the user typed.
-     *
-     * @param input the whole line the user entered, already stripped.
-     */
-    private static void printUnknownCommandResponse(String input) {
-        String commandWord = commandWordOf(input);
-        printProblem("'" + commandWord + "'? That's not in my directory. I know "
-                + "todo, deadline, event, list, mark, unmark and bye.");
-    }
-
-    /**
      * Prints every task Floppy is holding, or reports a problem if the list command
      * was given something after it.
      *
      * @param tasks     the storage array; only the first {@code taskCount} slots are filled.
      * @param taskCount how many slots are actually in use.
      * @param input     the whole line the user entered, already stripped.
+     * @throws FloppyException if the list command was given something after it.
      */
-    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input) {
+    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input)
+            throws FloppyException {
         String argument = argumentOf(input);
 
         if (!argument.isEmpty()) {
-            printProblem("'" + COMMAND_LIST + "' takes nothing after it. "
+            throw new FloppyException("'" + COMMAND_LIST + "' takes nothing after it. "
                     + "Drop the '" + argument + "' and I'll read the whole disk.");
-            return;
         }
 
         printTasks(tasks, taskCount);
@@ -488,17 +476,6 @@ public class Floppy {
     private static void printBlankInputResponse() {
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + "*reads an empty sector* ...that was a whole lot of nothing.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Responds when storage is full. The brief says to assume this never happens,
-     * but saying so beats crashing with an ArrayIndexOutOfBoundsException.
-     */
-    private static void printDiskFullResponse() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*grinding noise* Disk full at " + MAX_TASKS + " tasks.");
-        System.out.println(INDENT + "I did warn you I was small.");
         System.out.println(HORIZONTAL_LINE);
     }
 
