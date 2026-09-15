@@ -1,5 +1,6 @@
 package floppy;
 
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import floppy.task.Deadline;
@@ -76,12 +77,6 @@ public class Floppy {
     private static final String MARKER_TO = "/to";
 
     /**
-     * Largest number of tasks Floppy can hold. The project brief allows us to assume
-     * the user never exceeds this, so a fixed-size array is enough for now.
-     */
-    private static final int MAX_TASKS = 100;
-
-    /**
      * Drive noises used to introduce each stored task. Floppy cycles through them
      * so that repeated commands do not produce identical replies, which makes the
      * chatbot feel more alive than a single fixed prefix would.
@@ -103,8 +98,7 @@ public class Floppy {
         printGreeting();
 
         Scanner in = new Scanner(System.in);
-        Task[] tasks = new Task[MAX_TASKS];
-        int taskCount = 0;
+        ArrayList<Task> tasks = new ArrayList<>();
 
         // hasNextLine() guards against the input stream ending without a "bye",
         // which happens when input is piped in from a file rather than typed.
@@ -116,7 +110,7 @@ public class Floppy {
             }
 
             try {
-                taskCount = handleCommand(tasks, taskCount, input);
+                handleCommand(tasks, input);
             } catch (FloppyException e) {
                 printProblem(e.getMessage());
             }
@@ -126,37 +120,31 @@ public class Floppy {
     }
 
     /**
-     * Carries out one command from the user and returns the resulting task count.
-     * Reports the problem to the user if the command word is not recognised.
+     * Carries out one command from the user.
      *
-     * @param tasks     the storage array.
-     * @param taskCount how many slots are in use before the command runs.
-     * @param input     the whole line the user entered, already stripped.
-     * @return how many slots are in use after the command has run.
+     * @param tasks the tasks Floppy is holding.
+     * @param input the whole line the user entered, already stripped.
      * @throws FloppyException if the command cannot be carried out as typed.
      */
-    private static int handleCommand(Task[] tasks, int taskCount, String input)
-            throws FloppyException {
+    private static void handleCommand(ArrayList<Task> tasks, String input) throws FloppyException {
         if (input.isEmpty()) {
             printBlankInputResponse();
         } else if (isCommand(input, COMMAND_LIST)) {
-            printTasksIfNoArgument(tasks, taskCount, input);
+            printTasksIfNoArgument(tasks, input);
         } else if (isCommand(input, COMMAND_MARK)) {
-            changeTaskStatus(tasks, taskCount, input, true);
+            changeTaskStatus(tasks, input, true);
         } else if (isCommand(input, COMMAND_UNMARK)) {
-            changeTaskStatus(tasks, taskCount, input, false);
+            changeTaskStatus(tasks, input, false);
         } else if (isCommand(input, COMMAND_TODO)) {
-            return addTask(tasks, taskCount, createTodo(input));
+            addTask(tasks, createTodo(input));
         } else if (isCommand(input, COMMAND_DEADLINE)) {
-            return addTask(tasks, taskCount, createDeadline(input));
+            addTask(tasks, createDeadline(input));
         } else if (isCommand(input, COMMAND_EVENT)) {
-            return addTask(tasks, taskCount, createEvent(input));
+            addTask(tasks, createEvent(input));
         } else {
             throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
                     + "I know todo, deadline, event, list, mark, unmark and bye.");
         }
-
-        return taskCount;
     }
 
     /**
@@ -194,17 +182,15 @@ public class Floppy {
 
     /**
      * Marks the task the user picked as done or not done, then reports the outcome.
-     * Does nothing if the command did not identify a task.
      *
-     * @param tasks         the storage array.
-     * @param taskCount     how many slots are actually in use.
-     * @param input         the whole line the user entered, already stripped.
-     * @param shouldBeDone  true to mark the task done, false to mark it not done.
+     * @param tasks        the tasks Floppy is holding.
+     * @param input        the whole line the user entered, already stripped.
+     * @param shouldBeDone true to mark the task done, false to mark it not done.
      * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void changeTaskStatus(Task[] tasks, int taskCount, String input, boolean shouldBeDone)
+    private static void changeTaskStatus(ArrayList<Task> tasks, String input, boolean shouldBeDone)
             throws FloppyException {
-        Task task = findTask(tasks, taskCount, input);
+        Task task = findTask(tasks, input);
 
         if (shouldBeDone) {
             task.markAsDone();
@@ -218,13 +204,12 @@ public class Floppy {
     /**
      * Returns the task named by the number in the user's command.
      *
-     * @param tasks     the storage array.
-     * @param taskCount how many slots are actually in use.
-     * @param input     the whole line the user entered, already stripped.
+     * @param tasks the tasks Floppy is holding.
+     * @param input the whole line the user entered, already stripped.
      * @return the task the user picked.
      * @throws FloppyException if the number is missing, not a number, or names no stored task.
      */
-    private static Task findTask(Task[] tasks, int taskCount, String input) throws FloppyException {
+    private static Task findTask(ArrayList<Task> tasks, String input) throws FloppyException {
         String argument = argumentOf(input);
 
         if (argument.isEmpty()) {
@@ -237,19 +222,19 @@ public class Floppy {
                     + "' is not a number, and I only speak in sectors.");
         }
 
-        if (taskCount == 0) {
+        if (tasks.isEmpty()) {
             throw new FloppyException("There's nothing on me to " + commandWordOf(input).toLowerCase()
                     + " yet. Add a task first, e.g. 'todo borrow book'.");
         }
 
         int taskNumber = parseTaskNumber(argument);
 
-        if (taskNumber < 1 || taskNumber > taskCount) {
-            throw new FloppyException("I have " + describeCount(taskCount)
+        if (taskNumber < 1 || taskNumber > tasks.size()) {
+            throw new FloppyException("I have " + describeCount(tasks.size())
                     + ". There is nothing at number " + argument + ".");
         }
 
-        return tasks[taskNumber - 1];
+        return tasks.get(taskNumber - 1);
     }
 
     /**
@@ -286,11 +271,10 @@ public class Floppy {
      * Confirms that a task has been stored, and says how many tasks are now held.
      *
      * @param task      the task that was just stored.
-     * @param taskIndex position the task was stored at, used to pick the drive noise.
-     * @param taskCount how many tasks Floppy holds after this one was added.
+     * @param taskCount how many tasks Floppy holds after this one was added; also picks the drive noise.
      */
-    private static void printTaskAdded(Task task, int taskIndex, int taskCount) {
-        String noise = DRIVE_NOISES[taskIndex % DRIVE_NOISES.length];
+    private static void printTaskAdded(Task task, int taskCount) {
+        String noise = DRIVE_NOISES[(taskCount - 1) % DRIVE_NOISES.length];
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + noise + " Got it. I've added this task:");
         System.out.println(INDENT_DETAIL + task);
@@ -311,23 +295,14 @@ public class Floppy {
     }
 
     /**
-     * Stores a task, reports it to the user, and returns the updated task count.
+     * Stores a task and reports it to the user.
      *
-     * @param tasks     the storage array.
-     * @param taskCount how many slots are in use before this call.
-     * @param task      the task to store.
-     * @return how many slots are in use after this call.
-     * @throws FloppyException if Floppy is already holding as many tasks as it can.
+     * @param tasks the tasks Floppy is holding.
+     * @param task  the task to store.
      */
-    private static int addTask(Task[] tasks, int taskCount, Task task) throws FloppyException {
-        if (taskCount == MAX_TASKS) {
-            throw new FloppyException("Disk full at " + MAX_TASKS + " tasks. "
-                    + "I did warn you I was small.");
-        }
-
-        tasks[taskCount] = task;
-        printTaskAdded(task, taskCount, taskCount + 1);
-        return taskCount + 1;
+    private static void addTask(ArrayList<Task> tasks, Task task) {
+        tasks.add(task);
+        printTaskAdded(task, tasks.size());
     }
 
     /**
@@ -407,12 +382,11 @@ public class Floppy {
      * Prints every task Floppy is holding, or reports a problem if the list command
      * was given something after it.
      *
-     * @param tasks     the storage array; only the first {@code taskCount} slots are filled.
-     * @param taskCount how many slots are actually in use.
-     * @param input     the whole line the user entered, already stripped.
+     * @param tasks the tasks Floppy is holding.
+     * @param input the whole line the user entered, already stripped.
      * @throws FloppyException if the list command was given something after it.
      */
-    private static void printTasksIfNoArgument(Task[] tasks, int taskCount, String input)
+    private static void printTasksIfNoArgument(ArrayList<Task> tasks, String input)
             throws FloppyException {
         String argument = argumentOf(input);
 
@@ -421,17 +395,16 @@ public class Floppy {
                     + "Drop the '" + argument + "' and I'll read the whole disk.");
         }
 
-        printTasks(tasks, taskCount);
+        printTasks(tasks);
     }
 
     /**
      * Prints every task Floppy is holding, numbered from 1.
      *
-     * @param tasks     the storage array; only the first {@code taskCount} slots are filled.
-     * @param taskCount how many slots are actually in use.
+     * @param tasks the tasks Floppy is holding.
      */
-    private static void printTasks(Task[] tasks, int taskCount) {
-        if (taskCount == 0) {
+    private static void printTasks(ArrayList<Task> tasks) {
+        if (tasks.isEmpty()) {
             printEmptyListResponse();
             return;
         }
@@ -439,8 +412,8 @@ public class Floppy {
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + "*rattling through the index*");
         System.out.println(INDENT + "Here are the tasks in your list:");
-        for (int i = 0; i < taskCount; i++) {
-            System.out.println(INDENT + (i + 1) + "." + tasks[i]);
+        for (int i = 0; i < tasks.size(); i++) {
+            System.out.println(INDENT + (i + 1) + "." + tasks.get(i));
         }
         System.out.println(HORIZONTAL_LINE);
     }
