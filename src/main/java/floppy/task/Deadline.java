@@ -9,6 +9,9 @@ package floppy.task;
  */
 public class Deadline extends Task {
 
+    /** Type code written at the start of a deadline's line in the data file. */
+    public static final String FILE_TYPE_CODE = "D";
+
     /** Type tag shown at the start of a deadline's display form. */
     private static final String TYPE_ICON = "[D]";
 
@@ -35,5 +38,16 @@ public class Deadline extends Task {
     @Override
     public String toString() {
         return TYPE_ICON + super.toString() + " (by: " + by + ")";
+    }
+
+    /**
+     * Returns this deadline as one line of the data file, for example
+     * {@code D | 0 | return book | Sunday}.
+     *
+     * @return the line to write to the data file.
+     */
+    @Override
+    public String toFileFormat() {
+        return FILE_TYPE_CODE + FILE_FIELD_SEPARATOR + super.toFileFormat() + FILE_FIELD_SEPARATOR + by;
     }
 }

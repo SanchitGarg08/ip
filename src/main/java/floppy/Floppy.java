@@ -1,6 +1,8 @@
 package floppy;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 import floppy.task.Deadline;
@@ -12,9 +14,9 @@ import floppy.task.Todo;
  * Floppy is a command line chatbot with the personality of a 1.44 MB floppy disk:
  * it whirrs, it clicks, and it is delighted to be useful again after decades in a drawer.
  *
- * <p>At this stage (Level-6) Floppy tracks three kinds of task -- todos, deadlines
- * and events -- lists them on demand, records which ones are done, and deletes
- * them when asked. It exits on {@code bye}.
+ * <p>At this stage (Level-7) Floppy tracks three kinds of task -- todos, deadlines
+ * and events -- lists them on demand, records which ones are done, deletes them when
+ * asked, and saves them to disk so they survive a restart. It exits on {@code bye}.
  */
 public class Floppy {
 
@@ -80,6 +82,13 @@ public class Floppy {
     private static final String MARKER_TO = "/to";
 
     /**
+     * Where Floppy keeps its tasks between runs. The path is relative, so it resolves
+     * against the folder Floppy is run from, and it is built from separate parts so
+     * that the right folder separator is used on every operating system.
+     */
+    private static final Path DATA_FILE = Path.of("data", "floppy.txt");
+
+    /**
      * Drive noises used to introduce each stored task. Floppy cycles through them
      * so that repeated commands do not produce identical replies, which makes the
      * chatbot feel more alive than a single fixed prefix would.
@@ -101,7 +110,8 @@ public class Floppy {
         printGreeting();
 
         Scanner in = new Scanner(System.in);
-        ArrayList<Task> tasks = new ArrayList<>();
+        Storage storage = new Storage(DATA_FILE);
+        ArrayList<Task> tasks = loadTasks(storage);
 
         // hasNextLine() guards against the input stream ending without a "bye",
         // which happens when input is piped in from a file rather than typed.
@@ -114,12 +124,55 @@ public class Floppy {
 
             try {
                 handleCommand(tasks, input);
+                storage.save(tasks);
             } catch (FloppyException e) {
                 printProblem(e.getMessage());
             }
         }
 
         printFarewell();
+    }
+
+    /**
+     * Loads the saved tasks and returns them. Warns the user about any unreadable lines
+     * that were skipped, and reports the problem and starts with no tasks if the data file
+     * cannot be read at all.
+     *
+     * @param storage where the tasks were saved.
+     * @return the tasks to start with.
+     */
+    private static ArrayList<Task> loadTasks(Storage storage) {
+        List<Task> savedTasks;
+        try {
+            savedTasks = storage.load();
+        } catch (FloppyException e) {
+            printProblem(e.getMessage());
+            return new ArrayList<>();
+        }
+
+        List<Integer> skippedLineNumbers = storage.getSkippedLineNumbers();
+        if (!skippedLineNumbers.isEmpty()) {
+            printProblem("Some of " + DATA_FILE + " was unreadable (line numbers " + skippedLineNumbers
+                    + "), so I skipped those lines. The original is backed up at "
+                    + storage.getBackupPath() + ".");
+        }
+
+        if (!savedTasks.isEmpty()) {
+            printTasksLoaded(savedTasks.size());
+        }
+        return new ArrayList<>(savedTasks);
+    }
+
+    /**
+     * Tells the user how many tasks were restored from the previous run.
+     *
+     * @param taskCount how many tasks were loaded.
+     */
+    private static void printTasksLoaded(int taskCount) {
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println(INDENT + "*reading sector 0... found you* Welcome back! I kept "
+                + describeCount(taskCount) + " safe for you. Type 'list' to see them.");
+        System.out.println(HORIZONTAL_LINE);
     }
 
     /**
