@@ -12,9 +12,9 @@ import floppy.task.Todo;
  * Floppy is a command line chatbot with the personality of a 1.44 MB floppy disk:
  * it whirrs, it clicks, and it is delighted to be useful again after decades in a drawer.
  *
- * <p>At this stage (Level-4) Floppy tracks three kinds of task -- todos, deadlines
- * and events -- lists them on demand, and records which ones are done.
- * It exits on {@code bye}.
+ * <p>At this stage (Level-6) Floppy tracks three kinds of task -- todos, deadlines
+ * and events -- lists them on demand, records which ones are done, and deletes
+ * them when asked. It exits on {@code bye}.
  */
 public class Floppy {
 
@@ -48,6 +48,9 @@ public class Floppy {
 
     /** The command that marks a task as not done. */
     private static final String COMMAND_UNMARK = "unmark";
+
+    /** The command that removes a task from the list. */
+    private static final String COMMAND_DELETE = "delete";
 
     /** The command that adds a task with no date or time. */
     private static final String COMMAND_TODO = "todo";
@@ -135,6 +138,8 @@ public class Floppy {
             changeTaskStatus(tasks, input, true);
         } else if (isCommand(input, COMMAND_UNMARK)) {
             changeTaskStatus(tasks, input, false);
+        } else if (isCommand(input, COMMAND_DELETE)) {
+            deleteTask(tasks, input);
         } else if (isCommand(input, COMMAND_TODO)) {
             addTask(tasks, createTodo(input));
         } else if (isCommand(input, COMMAND_DEADLINE)) {
@@ -143,7 +148,7 @@ public class Floppy {
             addTask(tasks, createEvent(input));
         } else {
             throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
-                    + "I know todo, deadline, event, list, mark, unmark and bye.");
+                    + "I know todo, deadline, event, list, mark, unmark, delete and bye.");
         }
     }
 
@@ -199,6 +204,19 @@ public class Floppy {
             task.markAsNotDone();
             printStatusChanged("*rewinds* OK, I've marked this task as not done yet:", task);
         }
+    }
+
+    /**
+     * Removes the task the user picked from the list, then reports what was removed.
+     *
+     * @param tasks the tasks Floppy is holding.
+     * @param input the whole line the user entered, already stripped.
+     * @throws FloppyException if the command does not name a task that exists.
+     */
+    private static void deleteTask(ArrayList<Task> tasks, String input) throws FloppyException {
+        Task task = findTask(tasks, input);
+        tasks.remove(task);
+        printTaskDeleted(task, tasks.size());
     }
 
     /**
@@ -262,7 +280,7 @@ public class Floppy {
         System.out.println(INDENT_DETAIL + "todo borrow book");
         System.out.println(INDENT_DETAIL + "deadline return book /by Sunday");
         System.out.println(INDENT_DETAIL + "event project meeting /from Mon 2pm /to 4pm");
-        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', or 'bye'.");
+        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', 'delete 1', or 'bye'.");
         System.out.println(INDENT + "What can I do for you?");
         System.out.println(HORIZONTAL_LINE);
     }
@@ -277,6 +295,20 @@ public class Floppy {
         String noise = DRIVE_NOISES[(taskCount - 1) % DRIVE_NOISES.length];
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + noise + " Got it. I've added this task:");
+        System.out.println(INDENT_DETAIL + task);
+        System.out.println(INDENT + "Now you have " + describeCount(taskCount) + " in the list.");
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Confirms that a task has been removed, and says how many tasks remain.
+     *
+     * @param task      the task that was just removed.
+     * @param taskCount how many tasks Floppy holds after the removal.
+     */
+    private static void printTaskDeleted(Task task, int taskCount) {
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println(INDENT + "*bzzt, sector wiped* Noted. I've removed this task:");
         System.out.println(INDENT_DETAIL + task);
         System.out.println(INDENT + "Now you have " + describeCount(taskCount) + " in the list.");
         System.out.println(HORIZONTAL_LINE);
