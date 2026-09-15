@@ -139,7 +139,8 @@ public class Floppy {
 
     /**
      * Loads the saved tasks into the storage array and returns how many were loaded.
-     * Reports the problem and starts with no tasks if the data file cannot be read.
+     * Warns the user about any unreadable lines that were skipped, and reports the problem
+     * and starts with no tasks if the data file cannot be read at all.
      *
      * @param storage where the tasks were saved.
      * @param tasks   the storage array to fill.
@@ -152,6 +153,13 @@ public class Floppy {
         } catch (FloppyException e) {
             printProblem(e.getMessage());
             return 0;
+        }
+
+        List<Integer> skippedLineNumbers = storage.getSkippedLineNumbers();
+        if (!skippedLineNumbers.isEmpty()) {
+            printProblem("Some of " + DATA_FILE + " was unreadable (line numbers " + skippedLineNumbers
+                    + "), so I skipped those lines. The original is backed up at "
+                    + storage.getBackupPath() + ".");
         }
 
         int taskCount = Math.min(savedTasks.size(), MAX_TASKS);
