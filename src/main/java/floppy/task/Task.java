@@ -9,6 +9,15 @@ package floppy.task;
  */
 public class Task {
 
+    /** Separates the fields of a task when it is written to the data file. */
+    public static final String FILE_FIELD_SEPARATOR = " | ";
+
+    /** Marks a finished task in the data file. */
+    public static final String FILE_DONE = "1";
+
+    /** Marks an unfinished task in the data file. */
+    public static final String FILE_NOT_DONE = "0";
+
     /** What the user asked Floppy to remember. */
     protected String description;
 
@@ -53,5 +62,17 @@ public class Task {
     @Override
     public String toString() {
         return "[" + getStatusIcon() + "] " + description;
+    }
+
+    /**
+     * Returns the done status and description of this task in the data file format,
+     * for example {@code 1 | read book}. Subclasses put their type code in front and
+     * append any fields of their own.
+     *
+     * @return the fields every kind of task shares, ready to be written to the data file.
+     */
+    public String toFileFormat() {
+        String status = isDone ? FILE_DONE : FILE_NOT_DONE;
+        return status + FILE_FIELD_SEPARATOR + description;
     }
 }

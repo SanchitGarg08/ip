@@ -9,6 +9,9 @@ package floppy.task;
  */
 public class Event extends Task {
 
+    /** Type code written at the start of an event's line in the data file. */
+    public static final String FILE_TYPE_CODE = "E";
+
     /** Type tag shown at the start of an event's display form. */
     private static final String TYPE_ICON = "[E]";
 
@@ -40,5 +43,17 @@ public class Event extends Task {
     @Override
     public String toString() {
         return TYPE_ICON + super.toString() + " (from: " + from + " to: " + to + ")";
+    }
+
+    /**
+     * Returns this event as one line of the data file, for example
+     * {@code E | 0 | project meeting | Mon 2pm | 4pm}.
+     *
+     * @return the line to write to the data file.
+     */
+    @Override
+    public String toFileFormat() {
+        return FILE_TYPE_CODE + FILE_FIELD_SEPARATOR + super.toFileFormat()
+                + FILE_FIELD_SEPARATOR + from + FILE_FIELD_SEPARATOR + to;
     }
 }

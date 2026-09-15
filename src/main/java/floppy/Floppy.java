@@ -1,5 +1,8 @@
 package floppy;
 
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 import floppy.task.Deadline;
@@ -76,6 +79,13 @@ public class Floppy {
     private static final String MARKER_TO = "/to";
 
     /**
+     * Where Floppy keeps its tasks between runs. The path is relative, so it resolves
+     * against the folder Floppy is run from, and it is built from separate parts so
+     * that the right folder separator is used on every operating system.
+     */
+    private static final Path DATA_FILE = Path.of("data", "floppy.txt");
+
+    /**
      * Largest number of tasks Floppy can hold. The project brief allows us to assume
      * the user never exceeds this, so a fixed-size array is enough for now.
      */
@@ -105,6 +115,7 @@ public class Floppy {
         Scanner in = new Scanner(System.in);
         Task[] tasks = new Task[MAX_TASKS];
         int taskCount = 0;
+        Storage storage = new Storage(DATA_FILE);
 
         // hasNextLine() guards against the input stream ending without a "bye",
         // which happens when input is piped in from a file rather than typed.
@@ -117,12 +128,25 @@ public class Floppy {
 
             try {
                 taskCount = handleCommand(tasks, taskCount, input);
+                storage.save(storedTasks(tasks, taskCount));
             } catch (FloppyException e) {
                 printProblem(e.getMessage());
             }
         }
 
         printFarewell();
+    }
+
+    /**
+     * Returns the filled part of the storage array as a list, which is the form
+     * {@link Storage} works with.
+     *
+     * @param tasks     the storage array.
+     * @param taskCount how many slots are in use.
+     * @return a list view of the first {@code taskCount} tasks.
+     */
+    private static List<Task> storedTasks(Task[] tasks, int taskCount) {
+        return Arrays.asList(tasks).subList(0, taskCount);
     }
 
     /**
