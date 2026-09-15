@@ -114,8 +114,8 @@ public class Floppy {
 
         Scanner in = new Scanner(System.in);
         Task[] tasks = new Task[MAX_TASKS];
-        int taskCount = 0;
         Storage storage = new Storage(DATA_FILE);
+        int taskCount = loadTasks(storage, tasks);
 
         // hasNextLine() guards against the input stream ending without a "bye",
         // which happens when input is piped in from a file rather than typed.
@@ -135,6 +135,46 @@ public class Floppy {
         }
 
         printFarewell();
+    }
+
+    /**
+     * Loads the saved tasks into the storage array and returns how many were loaded.
+     * Reports the problem and starts with no tasks if the data file cannot be read.
+     *
+     * @param storage where the tasks were saved.
+     * @param tasks   the storage array to fill.
+     * @return how many slots of the storage array are now in use.
+     */
+    private static int loadTasks(Storage storage, Task[] tasks) {
+        List<Task> savedTasks;
+        try {
+            savedTasks = storage.load();
+        } catch (FloppyException e) {
+            printProblem(e.getMessage());
+            return 0;
+        }
+
+        int taskCount = Math.min(savedTasks.size(), MAX_TASKS);
+        for (int i = 0; i < taskCount; i++) {
+            tasks[i] = savedTasks.get(i);
+        }
+
+        if (taskCount > 0) {
+            printTasksLoaded(taskCount);
+        }
+        return taskCount;
+    }
+
+    /**
+     * Tells the user how many tasks were restored from the previous run.
+     *
+     * @param taskCount how many tasks were loaded.
+     */
+    private static void printTasksLoaded(int taskCount) {
+        System.out.println(HORIZONTAL_LINE);
+        System.out.println(INDENT + "*reading sector 0... found you* Welcome back! I kept "
+                + describeCount(taskCount) + " safe for you. Type 'list' to see them.");
+        System.out.println(HORIZONTAL_LINE);
     }
 
     /**
