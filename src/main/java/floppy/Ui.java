@@ -44,7 +44,12 @@ public class Ui {
     };
 
     /** Where the user's commands are read from. */
-    private final Scanner in = new Scanner(System.in);
+    private final Scanner in;
+
+    /** Constructs a user interface that reads commands from standard input. */
+    public Ui() {
+        this.in = new Scanner(System.in);
+    }
 
     /**
      * Returns a task count with the right singular or plural noun,
