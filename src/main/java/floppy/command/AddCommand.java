@@ -21,7 +21,11 @@ public class AddCommand extends Command {
         this.task = task;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     *
+     * @throws FloppyException if the tasks cannot be saved to disk.
+     */
     @Override
     public void execute(TaskList tasks, Ui ui, Storage storage) throws FloppyException {
         tasks.add(task);
