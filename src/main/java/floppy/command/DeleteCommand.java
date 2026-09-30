@@ -21,7 +21,12 @@ public class DeleteCommand extends Command {
         this.input = input;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     *
+     * @throws FloppyException if the command does not name a task that exists, or the
+     *         tasks cannot be saved to disk.
+     */
     @Override
     public void execute(TaskList tasks, Ui ui, Storage storage) throws FloppyException {
         Task task = findTask(tasks, input);
