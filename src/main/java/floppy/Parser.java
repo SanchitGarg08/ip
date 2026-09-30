@@ -1,5 +1,12 @@
 package floppy;
 
+import floppy.command.AddCommand;
+import floppy.command.BlankCommand;
+import floppy.command.Command;
+import floppy.command.DeleteCommand;
+import floppy.command.ExitCommand;
+import floppy.command.ListCommand;
+import floppy.command.MarkCommand;
 import floppy.task.Deadline;
 import floppy.task.Event;
 import floppy.task.Todo;
@@ -54,6 +61,63 @@ public class Parser {
 
     /** Hidden constructor: this class holds only static helpers and is never instantiated. */
     private Parser() {
+    }
+
+    /**
+     * Returns the command the user asked for, built from what they typed.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the command to carry out.
+     * @throws FloppyException if the command word is not recognised, or the command was
+     *         given the wrong arguments.
+     */
+    public static Command parse(String input) throws FloppyException {
+        // An exact match, so that a line merely starting with "bye" is not an exit.
+        if (input.equalsIgnoreCase(COMMAND_EXIT)) {
+            return new ExitCommand();
+        }
+        if (input.isEmpty()) {
+            return new BlankCommand();
+        }
+        if (isCommand(input, COMMAND_LIST)) {
+            requireNoArgument(input);
+            return new ListCommand();
+        }
+        if (isCommand(input, COMMAND_MARK)) {
+            return new MarkCommand(input, true);
+        }
+        if (isCommand(input, COMMAND_UNMARK)) {
+            return new MarkCommand(input, false);
+        }
+        if (isCommand(input, COMMAND_DELETE)) {
+            return new DeleteCommand(input);
+        }
+        if (isCommand(input, COMMAND_TODO)) {
+            return new AddCommand(parseTodo(input));
+        }
+        if (isCommand(input, COMMAND_DEADLINE)) {
+            return new AddCommand(parseDeadline(input));
+        }
+        if (isCommand(input, COMMAND_EVENT)) {
+            return new AddCommand(parseEvent(input));
+        }
+        throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
+                + "I know todo, deadline, event, list, mark, unmark, delete and bye.");
+    }
+
+    /**
+     * Checks that a command which takes no argument was given none.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @throws FloppyException if anything followed the command word.
+     */
+    private static void requireNoArgument(String input) throws FloppyException {
+        String argument = argumentOf(input);
+
+        if (!argument.isEmpty()) {
+            throw new FloppyException("'" + COMMAND_LIST + "' takes nothing after it. "
+                    + "Drop the '" + argument + "' and I'll read the whole disk.");
+        }
     }
 
     /**

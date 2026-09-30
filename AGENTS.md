@@ -48,7 +48,8 @@ standard was adopted. The points that come up most often in this project:
   a full stop.
 * Prefer a named constant over a repeated or unexplained literal.
 * Every class belongs to a package. `floppy` is the root package, with the task
-  hierarchy in `floppy.task`. `src/main/java` stays the source root.
+  hierarchy in `floppy.task` and the command classes in `floppy.command`.
+  `src/main/java` stays the source root.
 
 ## Git
 
