@@ -1,7 +1,6 @@
 package floppy;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import floppy.task.Deadline;
@@ -79,7 +78,7 @@ public class Floppy {
         ui.showGreeting();
 
         Storage storage = new Storage(DATA_FILE);
-        ArrayList<Task> tasks = loadTasks(storage, ui);
+        TaskList tasks = loadTasks(storage, ui);
 
         // hasNextCommand() is false once the input runs out, which happens when
         // input is piped in from a file rather than typed.
@@ -92,7 +91,7 @@ public class Floppy {
 
             try {
                 handleCommand(tasks, input, ui);
-                storage.save(tasks);
+                storage.save(tasks.asList());
             } catch (FloppyException e) {
                 ui.showProblem(e.getMessage());
             }
@@ -110,13 +109,13 @@ public class Floppy {
      * @param ui      where messages are shown.
      * @return the tasks to start with.
      */
-    private static ArrayList<Task> loadTasks(Storage storage, Ui ui) {
+    private static TaskList loadTasks(Storage storage, Ui ui) {
         List<Task> savedTasks;
         try {
             savedTasks = storage.load();
         } catch (FloppyException e) {
             ui.showProblem(e.getMessage());
-            return new ArrayList<>();
+            return new TaskList();
         }
 
         List<Integer> skippedLineNumbers = storage.getSkippedLineNumbers();
@@ -129,7 +128,7 @@ public class Floppy {
         if (!savedTasks.isEmpty()) {
             ui.showTasksLoaded(savedTasks.size());
         }
-        return new ArrayList<>(savedTasks);
+        return new TaskList(savedTasks);
     }
 
     /**
@@ -140,7 +139,7 @@ public class Floppy {
      * @param ui    where messages are shown.
      * @throws FloppyException if the command cannot be carried out as typed.
      */
-    private static void handleCommand(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
+    private static void handleCommand(TaskList tasks, String input, Ui ui) throws FloppyException {
         if (input.isEmpty()) {
             ui.showBlankInput();
         } else if (isCommand(input, COMMAND_LIST)) {
@@ -205,7 +204,7 @@ public class Floppy {
      * @param ui           where messages are shown.
      * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void changeTaskStatus(ArrayList<Task> tasks, String input, boolean shouldBeDone, Ui ui)
+    private static void changeTaskStatus(TaskList tasks, String input, boolean shouldBeDone, Ui ui)
             throws FloppyException {
         Task task = findTask(tasks, input);
 
@@ -226,7 +225,7 @@ public class Floppy {
      * @param ui    where messages are shown.
      * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void deleteTask(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
+    private static void deleteTask(TaskList tasks, String input, Ui ui) throws FloppyException {
         Task task = findTask(tasks, input);
         tasks.remove(task);
         ui.showTaskDeleted(task, tasks.size());
@@ -240,7 +239,7 @@ public class Floppy {
      * @return the task the user picked.
      * @throws FloppyException if the number is missing, not a number, or names no stored task.
      */
-    private static Task findTask(ArrayList<Task> tasks, String input) throws FloppyException {
+    private static Task findTask(TaskList tasks, String input) throws FloppyException {
         String argument = argumentOf(input);
 
         if (argument.isEmpty()) {
@@ -290,7 +289,7 @@ public class Floppy {
      * @param task  the task to store.
      * @param ui    where messages are shown.
      */
-    private static void addTask(ArrayList<Task> tasks, Task task, Ui ui) {
+    private static void addTask(TaskList tasks, Task task, Ui ui) {
         tasks.add(task);
         ui.showTaskAdded(task, tasks.size());
     }
@@ -377,7 +376,7 @@ public class Floppy {
      * @param ui    where the tasks are shown.
      * @throws FloppyException if the list command was given something after it.
      */
-    private static void listTasks(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
+    private static void listTasks(TaskList tasks, String input, Ui ui) throws FloppyException {
         String argument = argumentOf(input);
 
         if (!argument.isEmpty()) {
@@ -385,6 +384,6 @@ public class Floppy {
                     + "Drop the '" + argument + "' and I'll read the whole disk.");
         }
 
-        ui.showTasks(tasks);
+        ui.showTasks(tasks.asList());
     }
 }
