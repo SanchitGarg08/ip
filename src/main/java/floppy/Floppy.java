@@ -3,7 +3,6 @@ package floppy;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 import floppy.task.Deadline;
 import floppy.task.Event;
@@ -19,25 +18,6 @@ import floppy.task.Todo;
  * asked, and saves them to disk so they survive a restart. It exits on {@code bye}.
  */
 public class Floppy {
-
-    /** Divider printed above and below every block of Floppy's output. */
-    private static final String HORIZONTAL_LINE =
-            "    ____________________________________________________________";
-
-    /** Indentation placed in front of every line Floppy speaks. */
-    private static final String INDENT = "     ";
-
-    /** Deeper indentation used when a line shows the detail of the line above it. */
-    private static final String INDENT_DETAIL = INDENT + "  ";
-
-    /** ASCII art shown once at startup. */
-    private static final String BANNER =
-            " _____ _                      \n"
-            + "|  ___| | ___  _ __  _ __  _   _\n"
-            + "| |_  | |/ _ \\| '_ \\| '_ \\| | | |\n"
-            + "|  _| | | (_) | |_) | |_) | |_| |\n"
-            + "|_|   |_|\\___/| .__/| .__/ \\__, |\n"
-            + "              |_|   |_|    |___/";
 
     /** The command that makes Floppy exit. */
     private static final String COMMAND_EXIT = "bye";
@@ -89,48 +69,36 @@ public class Floppy {
     private static final Path DATA_FILE = Path.of("data", "floppy.txt");
 
     /**
-     * Drive noises used to introduce each stored task. Floppy cycles through them
-     * so that repeated commands do not produce identical replies, which makes the
-     * chatbot feel more alive than a single fixed prefix would.
-     */
-    private static final String[] DRIVE_NOISES = {
-        "*whirr-click*",
-        "*chk-chk-chk*",
-        "*seeking track 00*",
-        "*clunk... spinning up*"
-    };
-
-    /**
      * Runs the chatbot: greets the user, then reads and handles one command per line
      * until the user types {@code bye} or the input runs out.
      *
      * @param args command line arguments, which Floppy does not use.
      */
     public static void main(String[] args) {
-        printGreeting();
+        Ui ui = new Ui();
+        ui.showGreeting();
 
-        Scanner in = new Scanner(System.in);
         Storage storage = new Storage(DATA_FILE);
-        ArrayList<Task> tasks = loadTasks(storage);
+        ArrayList<Task> tasks = loadTasks(storage, ui);
 
-        // hasNextLine() guards against the input stream ending without a "bye",
-        // which happens when input is piped in from a file rather than typed.
-        while (in.hasNextLine()) {
-            String input = in.nextLine().strip();
+        // hasNextCommand() is false once the input runs out, which happens when
+        // input is piped in from a file rather than typed.
+        while (ui.hasNextCommand()) {
+            String input = ui.readCommand();
 
             if (input.equalsIgnoreCase(COMMAND_EXIT)) {
                 break;
             }
 
             try {
-                handleCommand(tasks, input);
+                handleCommand(tasks, input, ui);
                 storage.save(tasks);
             } catch (FloppyException e) {
-                printProblem(e.getMessage());
+                ui.showProblem(e.getMessage());
             }
         }
 
-        printFarewell();
+        ui.showFarewell();
     }
 
     /**
@@ -139,40 +107,29 @@ public class Floppy {
      * cannot be read at all.
      *
      * @param storage where the tasks were saved.
+     * @param ui      where messages are shown.
      * @return the tasks to start with.
      */
-    private static ArrayList<Task> loadTasks(Storage storage) {
+    private static ArrayList<Task> loadTasks(Storage storage, Ui ui) {
         List<Task> savedTasks;
         try {
             savedTasks = storage.load();
         } catch (FloppyException e) {
-            printProblem(e.getMessage());
+            ui.showProblem(e.getMessage());
             return new ArrayList<>();
         }
 
         List<Integer> skippedLineNumbers = storage.getSkippedLineNumbers();
         if (!skippedLineNumbers.isEmpty()) {
-            printProblem("Some of " + DATA_FILE + " was unreadable (line numbers " + skippedLineNumbers
+            ui.showProblem("Some of " + DATA_FILE + " was unreadable (line numbers " + skippedLineNumbers
                     + "), so I skipped those lines. The original is backed up at "
                     + storage.getBackupPath() + ".");
         }
 
         if (!savedTasks.isEmpty()) {
-            printTasksLoaded(savedTasks.size());
+            ui.showTasksLoaded(savedTasks.size());
         }
         return new ArrayList<>(savedTasks);
-    }
-
-    /**
-     * Tells the user how many tasks were restored from the previous run.
-     *
-     * @param taskCount how many tasks were loaded.
-     */
-    private static void printTasksLoaded(int taskCount) {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*reading sector 0... found you* Welcome back! I kept "
-                + describeCount(taskCount) + " safe for you. Type 'list' to see them.");
-        System.out.println(HORIZONTAL_LINE);
     }
 
     /**
@@ -180,25 +137,26 @@ public class Floppy {
      *
      * @param tasks the tasks Floppy is holding.
      * @param input the whole line the user entered, already stripped.
+     * @param ui    where messages are shown.
      * @throws FloppyException if the command cannot be carried out as typed.
      */
-    private static void handleCommand(ArrayList<Task> tasks, String input) throws FloppyException {
+    private static void handleCommand(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
         if (input.isEmpty()) {
-            printBlankInputResponse();
+            ui.showBlankInput();
         } else if (isCommand(input, COMMAND_LIST)) {
-            printTasksIfNoArgument(tasks, input);
+            listTasks(tasks, input, ui);
         } else if (isCommand(input, COMMAND_MARK)) {
-            changeTaskStatus(tasks, input, true);
+            changeTaskStatus(tasks, input, true, ui);
         } else if (isCommand(input, COMMAND_UNMARK)) {
-            changeTaskStatus(tasks, input, false);
+            changeTaskStatus(tasks, input, false, ui);
         } else if (isCommand(input, COMMAND_DELETE)) {
-            deleteTask(tasks, input);
+            deleteTask(tasks, input, ui);
         } else if (isCommand(input, COMMAND_TODO)) {
-            addTask(tasks, createTodo(input));
+            addTask(tasks, createTodo(input), ui);
         } else if (isCommand(input, COMMAND_DEADLINE)) {
-            addTask(tasks, createDeadline(input));
+            addTask(tasks, createDeadline(input), ui);
         } else if (isCommand(input, COMMAND_EVENT)) {
-            addTask(tasks, createEvent(input));
+            addTask(tasks, createEvent(input), ui);
         } else {
             throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
                     + "I know todo, deadline, event, list, mark, unmark, delete and bye.");
@@ -244,18 +202,19 @@ public class Floppy {
      * @param tasks        the tasks Floppy is holding.
      * @param input        the whole line the user entered, already stripped.
      * @param shouldBeDone true to mark the task done, false to mark it not done.
+     * @param ui           where messages are shown.
      * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void changeTaskStatus(ArrayList<Task> tasks, String input, boolean shouldBeDone)
+    private static void changeTaskStatus(ArrayList<Task> tasks, String input, boolean shouldBeDone, Ui ui)
             throws FloppyException {
         Task task = findTask(tasks, input);
 
         if (shouldBeDone) {
             task.markAsDone();
-            printStatusChanged("*clack* Nice! I've marked this task as done:", task);
+            ui.showTaskMarked(task);
         } else {
             task.markAsNotDone();
-            printStatusChanged("*rewinds* OK, I've marked this task as not done yet:", task);
+            ui.showTaskUnmarked(task);
         }
     }
 
@@ -264,12 +223,13 @@ public class Floppy {
      *
      * @param tasks the tasks Floppy is holding.
      * @param input the whole line the user entered, already stripped.
+     * @param ui    where messages are shown.
      * @throws FloppyException if the command does not name a task that exists.
      */
-    private static void deleteTask(ArrayList<Task> tasks, String input) throws FloppyException {
+    private static void deleteTask(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
         Task task = findTask(tasks, input);
         tasks.remove(task);
-        printTaskDeleted(task, tasks.size());
+        ui.showTaskDeleted(task, tasks.size());
     }
 
     /**
@@ -301,7 +261,7 @@ public class Floppy {
         int taskNumber = parseTaskNumber(argument);
 
         if (taskNumber < 1 || taskNumber > tasks.size()) {
-            throw new FloppyException("I have " + describeCount(tasks.size())
+            throw new FloppyException("I have " + Ui.describeCount(tasks.size())
                     + ". There is nothing at number " + argument + ".");
         }
 
@@ -323,71 +283,16 @@ public class Floppy {
         }
     }
 
-    /** Prints the banner and welcome message shown when Floppy starts up. */
-    private static void printGreeting() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(BANNER);
-        System.out.println(INDENT + "*click... whirr... clunk*");
-        System.out.println(INDENT + "Hello! I'm Floppy, 1.44 MB of pure determination.");
-        System.out.println(INDENT + "Tell me a task and I'll hold onto it:");
-        System.out.println(INDENT_DETAIL + "todo borrow book");
-        System.out.println(INDENT_DETAIL + "deadline return book /by Sunday");
-        System.out.println(INDENT_DETAIL + "event project meeting /from Mon 2pm /to 4pm");
-        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', 'delete 1', or 'bye'.");
-        System.out.println(INDENT + "What can I do for you?");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Confirms that a task has been stored, and says how many tasks are now held.
-     *
-     * @param task      the task that was just stored.
-     * @param taskCount how many tasks Floppy holds after this one was added; also picks the drive noise.
-     */
-    private static void printTaskAdded(Task task, int taskCount) {
-        String noise = DRIVE_NOISES[(taskCount - 1) % DRIVE_NOISES.length];
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + noise + " Got it. I've added this task:");
-        System.out.println(INDENT_DETAIL + task);
-        System.out.println(INDENT + "Now you have " + describeCount(taskCount) + " in the list.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Confirms that a task has been removed, and says how many tasks remain.
-     *
-     * @param task      the task that was just removed.
-     * @param taskCount how many tasks Floppy holds after the removal.
-     */
-    private static void printTaskDeleted(Task task, int taskCount) {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*bzzt, sector wiped* Noted. I've removed this task:");
-        System.out.println(INDENT_DETAIL + task);
-        System.out.println(INDENT + "Now you have " + describeCount(taskCount) + " in the list.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Returns a task count with the right singular or plural noun,
-     * for example "1 task" or "5 tasks".
-     *
-     * @param taskCount the number of tasks to describe.
-     * @return the count followed by the correctly pluralised word "task".
-     */
-    private static String describeCount(int taskCount) {
-        String noun = taskCount == 1 ? " task" : " tasks";
-        return taskCount + noun;
-    }
-
     /**
      * Stores a task and reports it to the user.
      *
      * @param tasks the tasks Floppy is holding.
      * @param task  the task to store.
+     * @param ui    where messages are shown.
      */
-    private static void addTask(ArrayList<Task> tasks, Task task) {
+    private static void addTask(ArrayList<Task> tasks, Task task, Ui ui) {
         tasks.add(task);
-        printTaskAdded(task, tasks.size());
+        ui.showTaskAdded(task, tasks.size());
     }
 
     /**
@@ -464,15 +369,15 @@ public class Floppy {
     }
 
     /**
-     * Prints every task Floppy is holding, or reports a problem if the list command
+     * Shows every task Floppy is holding, or reports a problem if the list command
      * was given something after it.
      *
      * @param tasks the tasks Floppy is holding.
      * @param input the whole line the user entered, already stripped.
+     * @param ui    where the tasks are shown.
      * @throws FloppyException if the list command was given something after it.
      */
-    private static void printTasksIfNoArgument(ArrayList<Task> tasks, String input)
-            throws FloppyException {
+    private static void listTasks(ArrayList<Task> tasks, String input, Ui ui) throws FloppyException {
         String argument = argumentOf(input);
 
         if (!argument.isEmpty()) {
@@ -480,76 +385,6 @@ public class Floppy {
                     + "Drop the '" + argument + "' and I'll read the whole disk.");
         }
 
-        printTasks(tasks);
-    }
-
-    /**
-     * Prints every task Floppy is holding, numbered from 1.
-     *
-     * @param tasks the tasks Floppy is holding.
-     */
-    private static void printTasks(ArrayList<Task> tasks) {
-        if (tasks.isEmpty()) {
-            printEmptyListResponse();
-            return;
-        }
-
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*rattling through the index*");
-        System.out.println(INDENT + "Here are the tasks in your list:");
-        for (int i = 0; i < tasks.size(); i++) {
-            System.out.println(INDENT + (i + 1) + "." + tasks.get(i));
-        }
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /** Prints Floppy's reply when there are no tasks to show. */
-    private static void printEmptyListResponse() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*spins, finds nothing* Not a single byte in here yet.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Reports that a task changed its done status.
-     *
-     * @param message the sentence describing what happened.
-     * @param task    the task whose status changed.
-     */
-    private static void printStatusChanged(String message, Task task) {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + message);
-        System.out.println(INDENT_DETAIL + task);
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Reports that Floppy could not carry out a command.
-     *
-     * @param explanation what went wrong, in Floppy's own words.
-     */
-    private static void printProblem(String explanation) {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*stutters* " + explanation);
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /**
-     * Responds to an empty line. Storing a blank task would clutter the list,
-     * so Floppy stays in character and ignores it instead.
-     */
-    private static void printBlankInputResponse() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*reads an empty sector* ...that was a whole lot of nothing.");
-        System.out.println(HORIZONTAL_LINE);
-    }
-
-    /** Prints the farewell message shown when the user exits. */
-    private static void printFarewell() {
-        System.out.println(HORIZONTAL_LINE);
-        System.out.println(INDENT + "*spinning down... ejecting*");
-        System.out.println(INDENT + "Bye. Hope to see you again soon!");
-        System.out.println(INDENT + "Please don't leave me in a drawer for another 20 years.");
-        System.out.println(HORIZONTAL_LINE);
+        ui.showTasks(tasks);
     }
 }
