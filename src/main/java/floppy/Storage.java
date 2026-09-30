@@ -157,7 +157,7 @@ public class Storage {
         }
         case Deadline.FILE_TYPE_CODE -> {
             requireFieldCount(fields, FIELD_COUNT_DEADLINE);
-            yield new Deadline(description, fields[3]);
+            yield new Deadline(description, Parser.parseDate(fields[3]));
         }
         case Event.FILE_TYPE_CODE -> {
             requireFieldCount(fields, FIELD_COUNT_EVENT);
