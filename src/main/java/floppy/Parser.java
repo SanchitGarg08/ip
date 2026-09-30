@@ -8,6 +8,7 @@ import floppy.command.BlankCommand;
 import floppy.command.Command;
 import floppy.command.DeleteCommand;
 import floppy.command.ExitCommand;
+import floppy.command.FindCommand;
 import floppy.command.ListCommand;
 import floppy.command.MarkCommand;
 import floppy.task.Deadline;
@@ -43,6 +44,9 @@ public class Parser {
 
     /** The command that adds a task spanning a start and an end time. */
     public static final String COMMAND_EVENT = "event";
+
+    /** The command that searches task descriptions for a keyword. */
+    public static final String COMMAND_FIND = "find";
 
     /** Separates a deadline's description from its due time. */
     public static final String MARKER_BY = "/by";
@@ -98,6 +102,9 @@ public class Parser {
         if (isCommand(input, COMMAND_DELETE)) {
             return new DeleteCommand(input);
         }
+        if (isCommand(input, COMMAND_FIND)) {
+            return new FindCommand(parseKeyword(input));
+        }
         if (isCommand(input, COMMAND_TODO)) {
             return new AddCommand(parseTodo(input));
         }
@@ -108,7 +115,24 @@ public class Parser {
             return new AddCommand(parseEvent(input));
         }
         throw new FloppyException("'" + commandWordOf(input) + "'? That's not in my directory. "
-                + "I know todo, deadline, event, list, mark, unmark, delete and bye.");
+                + "I know todo, deadline, event, list, mark, unmark, delete, find and bye.");
+    }
+
+    /**
+     * Returns the keyword the user wants to search for.
+     *
+     * @param input the whole line the user entered, already stripped.
+     * @return the keyword to look for.
+     * @throws FloppyException if no keyword was given.
+     */
+    private static String parseKeyword(String input) throws FloppyException {
+        String keyword = argumentOf(input);
+
+        if (keyword.isEmpty()) {
+            throw new FloppyException("Find what? Give me a keyword, e.g. '"
+                    + COMMAND_FIND + " book'.");
+        }
+        return keyword;
     }
 
     /**

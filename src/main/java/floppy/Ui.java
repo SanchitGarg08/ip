@@ -93,7 +93,8 @@ public class Ui {
         System.out.println(INDENT_DETAIL + "todo borrow book");
         System.out.println(INDENT_DETAIL + "deadline return book /by 2019-10-15");
         System.out.println(INDENT_DETAIL + "event project meeting /from Mon 2pm /to 4pm");
-        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', 'delete 1', or 'bye'.");
+        System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', 'delete 1',");
+        System.out.println(INDENT + "'find book', or 'bye'.");
         System.out.println(INDENT + "What can I do for you?");
         System.out.println(HORIZONTAL_LINE);
     }
@@ -172,10 +173,39 @@ public class Ui {
         System.out.println(HORIZONTAL_LINE);
         System.out.println(INDENT + "*rattling through the index*");
         System.out.println(INDENT + "Here are the tasks in your list:");
+        showNumberedTasks(tasks);
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Prints the tasks that matched a search, numbered from 1, or says that nothing
+     * matched.
+     *
+     * @param matches the tasks whose descriptions contain the keyword.
+     * @param keyword the keyword that was searched for.
+     */
+    public void showMatchingTasks(List<Task> matches, String keyword) {
+        System.out.println(HORIZONTAL_LINE);
+        if (matches.isEmpty()) {
+            System.out.println(INDENT + "*scans every track* Nothing in here matches '"
+                    + keyword + "'.");
+        } else {
+            System.out.println(INDENT + "*seeking '" + keyword + "'*");
+            System.out.println(INDENT + "Here are the matching tasks in your list:");
+            showNumberedTasks(matches);
+        }
+        System.out.println(HORIZONTAL_LINE);
+    }
+
+    /**
+     * Prints the given tasks numbered from 1, without any surrounding dividers.
+     *
+     * @param tasks the tasks to print.
+     */
+    private void showNumberedTasks(List<Task> tasks) {
         for (int i = 0; i < tasks.size(); i++) {
             System.out.println(INDENT + (i + 1) + "." + tasks.get(i));
         }
-        System.out.println(HORIZONTAL_LINE);
     }
 
     /**
