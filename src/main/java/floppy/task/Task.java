@@ -34,6 +34,15 @@ public class Task {
         this.isDone = false;
     }
 
+    /**
+     * Returns what the user asked Floppy to remember.
+     *
+     * @return this task's description.
+     */
+    public String getDescription() {
+        return description;
+    }
+
     /** Marks this task as finished. */
     public void markAsDone() {
         this.isDone = true;

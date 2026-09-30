@@ -76,6 +76,25 @@ public class TaskList {
     }
 
     /**
+     * Returns the tasks whose description contains the given keyword, ignoring case,
+     * in the order they appear in the list.
+     *
+     * @param keyword the word or phrase to look for.
+     * @return the matching tasks, which may be empty.
+     */
+    public List<Task> find(String keyword) {
+        List<Task> matches = new ArrayList<>();
+        String target = keyword.toLowerCase();
+
+        for (Task task : tasks) {
+            if (task.getDescription().toLowerCase().contains(target)) {
+                matches.add(task);
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Returns the tasks as a list that cannot be modified, for classes that only need
      * to read them, such as when saving to file or printing.
      *
