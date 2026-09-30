@@ -1,5 +1,8 @@
 package floppy;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 import floppy.command.AddCommand;
 import floppy.command.BlankCommand;
 import floppy.command.Command;
@@ -49,6 +52,9 @@ public class Parser {
 
     /** Separates an event's start time from its end time. */
     public static final String MARKER_TO = "/to";
+
+    /** The date format Floppy accepts from the user. */
+    private static final String DATE_FORMAT_HINT = "yyyy-mm-dd";
 
     /** Regular expression matching a whole number, with an optional leading sign. */
     private static final String WHOLE_NUMBER_REGEX = "[+-]?\\d+";
@@ -210,10 +216,10 @@ public class Parser {
         String by = parts.length < 2 ? "" : parts[1].strip();
 
         if (description.isEmpty() || by.isEmpty()) {
-            throw new FloppyException("A deadline needs a description and a time, e.g. "
-                    + "'deadline return book " + MARKER_BY + " Sunday'.");
+            throw new FloppyException("A deadline needs a description and a date, e.g. "
+                    + "'deadline return book " + MARKER_BY + " 2019-10-15'.");
         }
-        return new Deadline(description, by);
+        return new Deadline(description, parseDate(by));
     }
 
     /**
@@ -241,6 +247,22 @@ public class Parser {
                     + "'event project meeting " + MARKER_FROM + " Mon 2pm " + MARKER_TO + " 4pm'.");
         }
         return new Event(description, from, to);
+    }
+
+    /**
+     * Returns the date written in the given text.
+     *
+     * @param text a date in {@value #DATE_FORMAT_HINT} form.
+     * @return the date it names.
+     * @throws FloppyException if the text is not a date in that form.
+     */
+    public static LocalDate parseDate(String text) throws FloppyException {
+        try {
+            return LocalDate.parse(text);
+        } catch (DateTimeParseException e) {
+            throw new FloppyException("I couldn't read '" + text + "' as a date. Use "
+                    + DATE_FORMAT_HINT + ", e.g. 2019-10-15.");
+        }
     }
 
     /**

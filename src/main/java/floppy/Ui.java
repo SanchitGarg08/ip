@@ -91,7 +91,7 @@ public class Ui {
         System.out.println(INDENT + "Hello! I'm Floppy, 1.44 MB of pure determination.");
         System.out.println(INDENT + "Tell me a task and I'll hold onto it:");
         System.out.println(INDENT_DETAIL + "todo borrow book");
-        System.out.println(INDENT_DETAIL + "deadline return book /by Sunday");
+        System.out.println(INDENT_DETAIL + "deadline return book /by 2019-10-15");
         System.out.println(INDENT_DETAIL + "event project meeting /from Mon 2pm /to 4pm");
         System.out.println(INDENT + "Then 'list', 'mark 1', 'unmark 1', 'delete 1', or 'bye'.");
         System.out.println(INDENT + "What can I do for you?");
